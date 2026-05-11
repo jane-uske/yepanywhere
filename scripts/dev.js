@@ -14,7 +14,7 @@
  *     PORT=4000
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -106,6 +106,7 @@ if (args.includes("--help") || args.includes("-h")) {
 Options:
   --watch              Enable backend auto-reload (tsx watch mode)
   --no-frontend-reload Frontend watches but doesn't HMR
+  --no-remote-static   Do not build/serve production frontend for non-local dev hosts
   -h, --help           Show this help message
 `);
   process.exit(0);
@@ -115,6 +116,11 @@ Options:
 // Use --watch to enable tsx watch mode
 const backendWatch = args.includes("--watch");
 const noFrontendReload = args.includes("--no-frontend-reload");
+const noRemoteStatic = args.includes("--no-remote-static");
+const remoteStaticEnabled =
+  !noRemoteStatic &&
+  process.env.DEV_REMOTE_STATIC_FRONTEND !== "false" &&
+  process.env.REMOTE_STATIC_FRONTEND !== "false";
 
 // Port configuration: PORT + 0 = server, PORT + 1 = maintenance, PORT + 2 = vite
 const basePort = process.env.PORT
@@ -140,6 +146,11 @@ console.log(
 );
 if (backendWatch) console.log("  Backend auto-reload: ENABLED (--watch)");
 if (noFrontendReload) console.log("  Frontend HMR: DISABLED");
+if (remoteStaticEnabled) {
+  console.log("  Remote static frontend: ENABLED for non-local hosts");
+} else {
+  console.log("  Remote static frontend: DISABLED");
+}
 if (!backendWatch && !noFrontendReload)
   console.log("  Frontend HMR: ENABLED, Backend: manual restart only");
 
@@ -149,6 +160,7 @@ const env = {
   // When not using --watch, enable manual reload mode (shows banner on file changes)
   NO_BACKEND_RELOAD: backendWatch ? "" : "true",
   NO_FRONTEND_RELOAD: noFrontendReload ? "true" : "",
+  DEV_REMOTE_STATIC_FRONTEND: remoteStaticEnabled ? "true" : "false",
   // Pass vite port to both server and client for consistency
   VITE_PORT: String(vitePort),
 };
@@ -241,6 +253,26 @@ function startClient() {
   return client;
 }
 
+function buildRemoteStaticFrontend() {
+  if (!remoteStaticEnabled) return;
+
+  console.log("\nBuilding remote static frontend...");
+  const result = spawnSync(pnpmBin, ["--filter", "client", "build"], {
+    cwd: rootDir,
+    env,
+    stdio: "inherit",
+    ...shellOption,
+  });
+
+  if (result.status !== 0) {
+    console.error(
+      `Remote static frontend build failed with code ${result.status ?? "unknown"}`,
+    );
+    process.exit(result.status ?? 1);
+  }
+}
+
 // Start both processes
+buildRemoteStaticFrontend();
 startServer();
 startClient();

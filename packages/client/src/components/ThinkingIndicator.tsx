@@ -3,11 +3,11 @@
  * Use this for all "thinking", "running", or "processing" state indicators.
  *
  * Variants:
- * - "dot": Compact pulsing dot only (8x8px)
- * - "pill": Pill badge with pulsing dot and text label
+ * - "dot": Compact loading spinner only
+ * - "pill": Pill badge with loading spinner and text label
  *
  * Examples:
- *   <ThinkingIndicator />                    // Just a pulsing dot
+ *   <ThinkingIndicator />                    // Just a loading spinner
  *   <ThinkingIndicator variant="pill" />     // Pill with "Thinking" text
  *   <ThinkingIndicator variant="pill" label="Running" />
  */
@@ -26,16 +26,18 @@ export function ThinkingIndicator({
   label = "Thinking",
   className,
 }: ThinkingIndicatorProps) {
-  const dot = <span className="thinking-indicator-dot" />;
+  const spinner = <span className="thinking-indicator-spinner" />;
 
   if (variant === "pill") {
     return (
       <span className={`thinking-indicator-pill ${className ?? ""}`}>
-        {dot}
+        {spinner}
         <span className="thinking-indicator-label">{label}</span>
       </span>
     );
   }
 
-  return <span className={`thinking-indicator ${className ?? ""}`}>{dot}</span>;
+  return (
+    <span className={`thinking-indicator ${className ?? ""}`}>{spinner}</span>
+  );
 }

@@ -11,7 +11,7 @@ import {
   mergeStreamMessage,
 } from "../lib/mergeMessages";
 import { getProvider } from "../providers/registry";
-import type { Message, Session, SessionStatus } from "../types";
+import type { AgentActivity, Message, Session, SessionStatus } from "../types";
 import {
   getCachedSessionDetail,
   getInFlightSessionDetailLoad,
@@ -38,6 +38,7 @@ export type AgentContentMap = Record<string, AgentContent>;
 export interface SessionLoadResult {
   session: Session;
   status: SessionStatus;
+  activity?: AgentActivity;
   pendingInputRequest?: unknown;
   slashCommands?: Array<{
     name: string;
@@ -383,6 +384,7 @@ export function useSessionMessages(
           onLoadComplete?.({
             session: metadata.session,
             status: metadata.ownership,
+            activity: metadata.activity,
             pendingInputRequest: metadata.pendingInputRequest,
             slashCommands: metadata.slashCommands,
           });
@@ -504,6 +506,7 @@ export function useSessionMessages(
         onLoadComplete?.({
           session: data.session,
           status: data.ownership,
+          activity: data.activity,
           pendingInputRequest: data.pendingInputRequest,
           slashCommands: data.slashCommands,
         });
@@ -691,6 +694,7 @@ export function useSessionMessages(
       return {
         session: data.session,
         status: data.ownership,
+        activity: data.activity,
         pendingInputRequest: data.pendingInputRequest,
         slashCommands: data.slashCommands,
       };

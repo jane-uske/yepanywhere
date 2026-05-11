@@ -621,6 +621,8 @@ describe("Process", () => {
       // Simulate user approving with answers
       const pendingRequest = process.getPendingInputRequest();
       expect(pendingRequest).not.toBeNull();
+      expect(pendingRequest?.type).toBe("question");
+      expect(pendingRequest?.prompt).toBe("test?");
       expect(pendingRequest?.toolName).toBe("AskUserQuestion");
       process.respondToInput(pendingRequest?.id, "approve", { "test?": "Yes" });
 

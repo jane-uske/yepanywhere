@@ -23,16 +23,16 @@ describe("ProcessingIndicator", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders dot and cursor when processing", () => {
+  it("renders spinner and cursor when processing", () => {
     render(<ProcessingIndicator isProcessing={true} />);
 
     const cursor = document.querySelector(".processing-cursor");
     expect(cursor).not.toBeNull();
     expect(cursor?.textContent).toBe("|");
 
-    // ThinkingIndicator uses .thinking-indicator-dot class
-    const dot = document.querySelector(".thinking-indicator-dot");
-    expect(dot).not.toBeNull();
+    // ThinkingIndicator uses .thinking-indicator-spinner class
+    const spinner = document.querySelector(".thinking-indicator-spinner");
+    expect(spinner).not.toBeNull();
   });
 
   it("types text progressively over time", async () => {

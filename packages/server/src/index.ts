@@ -20,6 +20,7 @@ import {
   attachUnifiedUpgradeHandler,
   createFrontendProxy,
   createStaticRoutes,
+  shouldServeDevStaticFrontend,
 } from "./frontend/index.js";
 import { ensureSelfSignedCertificate } from "./https/self-signed.js";
 import { SessionIndexService } from "./indexes/index.js";
@@ -666,6 +667,28 @@ async function startServer() {
     console.log(
       `[Frontend] Stable UI available at /_stable/ from ${config.stableDistPath}`,
     );
+  }
+
+  // Development remote/LAN/tunnel clients: serve the built frontend instead of
+  // Vite's module graph. Localhost still falls through to the Vite proxy below.
+  if (config.serveFrontend && isDev) {
+    if (fs.existsSync(config.clientDistPath)) {
+      const devStaticRoutes = createStaticRoutes({
+        distPath: config.clientDistPath,
+        shouldServeRequest: (c) =>
+          shouldServeDevStaticFrontend(
+            c.req.header("x-forwarded-host") ?? c.req.header("host"),
+          ),
+      });
+      app.route("/", devStaticRoutes);
+      console.log(
+        `[Frontend] Serving built client for non-local dev hosts from ${config.clientDistPath}`,
+      );
+    } else {
+      console.warn(
+        `[Frontend] Built client not found at ${config.clientDistPath}. Remote dev hosts will fall back to Vite until 'pnpm --filter client build' runs.`,
+      );
+    }
   }
 
   // Add frontend proxy as the final catch-all (AFTER all API routes including uploads)

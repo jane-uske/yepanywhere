@@ -123,6 +123,7 @@ export interface NewSessionDefaults {
   provider?: ProviderName;
   model?: string;
   permissionMode?: PermissionMode;
+  thinking?: ThinkingOption;
 }
 
 /**

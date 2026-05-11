@@ -46,6 +46,18 @@ export {
 
 export type { GitStatusInfo, GitFileChange } from "./git-status.js";
 
+export type {
+  RemiWorkSnapshotResponse,
+  WorkChangedFile,
+  WorkConfidence,
+  WorkEvidenceRef,
+  WorkProjectSummary,
+  WorkSignal,
+  WorkSignalState,
+  WorkType,
+  WorkVerification,
+} from "./work-snapshot.js";
+
 export {
   orderByParentChain,
   needsReorder,

@@ -96,7 +96,7 @@ function loadThinkingMode(): ThinkingMode {
     saveThinkingMode("auto");
     return "auto";
   }
-  return "off";
+  return "on";
 }
 
 function saveThinkingMode(mode: ThinkingMode) {
@@ -148,6 +148,21 @@ export function useModelSettings() {
     saveThinkingMode(mode);
   }, []);
 
+  const setThinkingSetting = useCallback((option: ThinkingOption) => {
+    saveThinkingSetting(option);
+    if (option === "off" || option === "auto") {
+      setThinkingModeState(option);
+      return;
+    }
+    if (option.startsWith("on:")) {
+      setThinkingModeState("on");
+      setEffortLevelState(option.slice(3) as EffortLevel);
+      return;
+    }
+    setThinkingModeState("auto");
+    setEffortLevelState(option as EffortLevel);
+  }, []);
+
   const cycleThinkingMode = useCallback(() => {
     const idx = THINKING_MODES.indexOf(thinkingMode);
     const next = THINKING_MODES[(idx + 1) % THINKING_MODES.length] ?? "off";
@@ -176,6 +191,7 @@ export function useModelSettings() {
     setThinkingLevel: setEffortLevel,
     thinkingMode,
     setThinkingMode,
+    setThinkingSetting,
     cycleThinkingMode,
     voiceInputEnabled,
     setVoiceInputEnabled,
@@ -208,6 +224,25 @@ export function getThinkingSetting(): ThinkingOption {
  */
 export function getThinkingMode(): ThinkingMode {
   return loadThinkingMode();
+}
+
+/**
+ * Apply a persisted thinking option to local UI settings.
+ */
+export function saveThinkingSetting(option: ThinkingOption): void {
+  if (option === "off" || option === "auto") {
+    saveThinkingMode(option);
+    return;
+  }
+
+  if (option.startsWith("on:")) {
+    saveThinkingMode("on");
+    saveEffortLevel(option.slice(3) as EffortLevel);
+    return;
+  }
+
+  saveThinkingMode("auto");
+  saveEffortLevel(option as EffortLevel);
 }
 
 /**

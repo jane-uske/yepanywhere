@@ -13,4 +13,8 @@ export {
   type FrontendProxy,
   type UnifiedUpgradeOptions,
 } from "./proxy.js";
-export { createStaticRoutes, type StaticServeOptions } from "./static.js";
+export {
+  createStaticRoutes,
+  shouldServeDevStaticFrontend,
+  type StaticServeOptions,
+} from "./static.js";

@@ -26,6 +26,17 @@ describe("SessionStatusBadge", () => {
     expect(badge?.textContent).toBe("Thinking");
   });
 
+  it("shows Thinking badge for external sessions when activity is in-turn", () => {
+    const { container } = render(
+      <SessionStatusBadge status={{ owner: "external" }} activity="in-turn" />,
+    );
+
+    const badge = container.querySelector(".thinking-indicator-pill");
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toBe("Thinking");
+    expect(container.querySelector(".status-external")).toBeNull();
+  });
+
   it("shows nothing when owned but not in-turn", () => {
     const { container } = render(
       <SessionStatusBadge

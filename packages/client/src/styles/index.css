@@ -8,11 +8,11 @@
 
 :root {
   /* Brand Colors (theme-agnostic) */
-  --app-yep-green: #059669;
-  --app-yep-green-dark: #047857;
+  --app-yep-green: #0066cc;
+  --app-yep-green-dark: #0057b8;
   --app-claude-ivory: #faf9f5;
   --app-claude-slate: #141413;
-  --app-claude-orange: #d97706;
+  --app-claude-orange: #ff9f0a;
 
   /* Provider Colors (theme-agnostic) */
   --provider-claude: var(--app-claude-orange);
@@ -27,10 +27,10 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
     sans-serif;
   --font-mono: "SF Mono", Monaco, "Cascadia Code", Consolas, monospace;
-  --font-size-xs: 10px;
+  --font-size-xs: 11px;
   --font-size-sm: 12px;
-  --font-size-base: 13px;
-  --font-size-lg: 14px;
+  --font-size-base: 14px;
+  --font-size-lg: 15px;
   --tab-size: 2;
 
   /* Spacing */
@@ -40,9 +40,31 @@
   --space-4: 16px;
 
   /* Border Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-sm: 8px;
+  --radius-md: 11px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* Compatibility aliases used by older components */
+  --color-primary: var(--app-yep-green);
+  --accent-primary: var(--app-yep-green);
+  --color-success: var(--success-color, #34c759);
+  --color-error: var(--error-color, #ff453a);
+  --text-danger: var(--error-color, #ff453a);
+  --text-link: var(--link-color, #0066cc);
+  --bg-elevated: var(--bg-secondary);
+  --bg-subtle: var(--bg-tertiary);
+  --border-muted: var(--border-subtle);
+  --error-bg-subtle: color-mix(
+    in srgb,
+    var(--error-color, #ff453a) 12%,
+    transparent
+  );
+
+  /* Apple-inspired utility tokens */
+  --shadow-popover: 0 18px 50px rgba(0, 0, 0, 0.16);
+  --shadow-resting: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --surface-blur: blur(22px) saturate(180%);
 
   /* Spinner */
   --app-spinner-foreground: var(--thinking-color);
@@ -55,55 +77,55 @@
   color-scheme: dark;
 
   /* Backgrounds */
-  --bg-surface: #181818;
-  --bg-secondary: #1f1f1f;
-  --bg-tertiary: #252525;
-  --bg-hover: #2a2d2e;
-  --bg-code: #1f1f1f;
-  --bg-input: #2a2a2a;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-user-message: #3a3a3a;
+  --bg-surface: #000000;
+  --bg-secondary: #1d1d1f;
+  --bg-tertiary: #2a2a2c;
+  --bg-hover: #303034;
+  --bg-code: #1d1d1f;
+  --bg-input: #1d1d1f;
+  --bg-overlay: rgba(0, 0, 0, 0.58);
+  --bg-user-message: #2a2a2c;
 
   /* Text Colors */
-  --text-primary: #cccccc;
-  --text-secondary: #b8b8b8;
-  --text-muted: #9d9d9d;
-  --text-dimmed: #666666;
+  --text-primary: #f5f5f7;
+  --text-secondary: #d2d2d7;
+  --text-muted: #a1a1a6;
+  --text-dimmed: #6e6e73;
 
   /* Border Colors */
-  --border-color: #3c3c3c;
-  --border-subtle: #333333;
-  --border-input: #444444;
+  --border-color: rgba(255, 255, 255, 0.14);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-input: rgba(255, 255, 255, 0.18);
 
   /* Semantic Colors */
-  --link-color: #4daafc;
-  --error-color: #c74e39;
-  --success-color: #74c991;
-  --warning-color: #e1c08d;
-  --warning-badge-bg: #c2410c;
-  --attention-color: #4daafc;
-  --focus-border: #007acc;
-  --primary-color: #60a5fa;
+  --link-color: #2997ff;
+  --error-color: #ff453a;
+  --success-color: #30d158;
+  --warning-color: #ffd60a;
+  --warning-badge-bg: #ff9f0a;
+  --attention-color: #2997ff;
+  --focus-border: #2997ff;
+  --primary-color: #2997ff;
 
   /* Timeline */
-  --timeline-dot-default: #9d9d9d;
-  --timeline-dot-tool: #74c991;
-  --timeline-dot-error: #c74e39;
-  --timeline-dot-warning: #e1c08d;
-  --timeline-dot-working: #d97757;
-  --timeline-line-color: #3c3c3c;
+  --timeline-dot-default: #86868b;
+  --timeline-dot-tool: #30d158;
+  --timeline-dot-error: #ff453a;
+  --timeline-dot-warning: #ffd60a;
+  --timeline-dot-working: #ff9f0a;
+  --timeline-line-color: rgba(255, 255, 255, 0.12);
 
   /* Status Colors */
-  --status-badge-idle-bg: #333333;
-  --status-badge-idle-text: #888888;
-  --status-badge-owned-bg: #1a3a1a;
-  --status-badge-owned-text: #44ff44;
-  --status-badge-external-bg: #3a3a1a;
-  --status-badge-external-text: #ffff44;
-  --status-badge-running-bg: #3a2a1a;
-  --status-badge-running-text: #ffaa44;
-  --status-badge-input-bg: #1a2a4a;
-  --status-badge-input-text: #66aaff;
+  --status-badge-idle-bg: rgba(255, 255, 255, 0.08);
+  --status-badge-idle-text: #a1a1a6;
+  --status-badge-owned-bg: rgba(48, 209, 88, 0.16);
+  --status-badge-owned-text: #30d158;
+  --status-badge-external-bg: rgba(255, 214, 10, 0.14);
+  --status-badge-external-text: #ffd60a;
+  --status-badge-running-bg: rgba(255, 159, 10, 0.16);
+  --status-badge-running-text: #ff9f0a;
+  --status-badge-input-bg: rgba(41, 151, 255, 0.16);
+  --status-badge-input-text: #2997ff;
 
   /* Shiki Syntax Highlighting (GitHub Dark inspired) */
   --shiki-foreground: #e1e4e8;
@@ -127,56 +149,56 @@
 [data-theme="dark"] {
   color-scheme: dark;
 
-  /* Backgrounds - lighter greys */
-  --bg-surface: #2f2f2f;
-  --bg-secondary: #363636;
-  --bg-tertiary: #3d3d3d;
-  --bg-hover: #454545;
-  --bg-code: #292929;
-  --bg-input: #3a3a3a;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-user-message: #484848;
+  /* Backgrounds - graphite Apple surfaces */
+  --bg-surface: #161617;
+  --bg-secondary: #1f1f21;
+  --bg-tertiary: #2b2b2e;
+  --bg-hover: #333337;
+  --bg-code: #1f1f21;
+  --bg-input: #242426;
+  --bg-overlay: rgba(0, 0, 0, 0.52);
+  --bg-user-message: #2b2b2e;
 
-  /* Text Colors - slightly brighter */
-  --text-primary: #e0e0e0;
-  --text-secondary: #c0c0c0;
-  --text-muted: #a0a0a0;
-  --text-dimmed: #707070;
+  /* Text Colors */
+  --text-primary: #f5f5f7;
+  --text-secondary: #d2d2d7;
+  --text-muted: #a1a1a6;
+  --text-dimmed: #6e6e73;
 
   /* Border Colors */
-  --border-color: #4a4a4a;
-  --border-subtle: #444444;
-  --border-input: #555555;
+  --border-color: rgba(255, 255, 255, 0.13);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.17);
 
   /* Semantic Colors */
-  --link-color: #5db5ff;
-  --error-color: #e05545;
-  --success-color: #7dd39a;
-  --warning-color: #ebd09d;
-  --warning-badge-bg: #c2410c;
-  --attention-color: #5db5ff;
-  --focus-border: #007acc;
-  --primary-color: #60a5fa;
+  --link-color: #2997ff;
+  --error-color: #ff453a;
+  --success-color: #30d158;
+  --warning-color: #ffd60a;
+  --warning-badge-bg: #ff9f0a;
+  --attention-color: #2997ff;
+  --focus-border: #2997ff;
+  --primary-color: #2997ff;
 
   /* Timeline */
-  --timeline-dot-default: #a0a0a0;
-  --timeline-dot-tool: #7dd39a;
-  --timeline-dot-error: #e05545;
-  --timeline-dot-warning: #ebd09d;
-  --timeline-dot-working: #d97757;
-  --timeline-line-color: #4a4a4a;
+  --timeline-dot-default: #86868b;
+  --timeline-dot-tool: #30d158;
+  --timeline-dot-error: #ff453a;
+  --timeline-dot-warning: #ffd60a;
+  --timeline-dot-working: #ff9f0a;
+  --timeline-line-color: rgba(255, 255, 255, 0.12);
 
   /* Status Colors */
-  --status-badge-idle-bg: #444444;
-  --status-badge-idle-text: #999999;
-  --status-badge-owned-bg: #2a4a2a;
-  --status-badge-owned-text: #55ff55;
-  --status-badge-external-bg: #4a4a2a;
-  --status-badge-external-text: #ffff55;
-  --status-badge-running-bg: #4a3a2a;
-  --status-badge-running-text: #ffbb55;
-  --status-badge-input-bg: #2a3a5a;
-  --status-badge-input-text: #77bbff;
+  --status-badge-idle-bg: rgba(255, 255, 255, 0.08);
+  --status-badge-idle-text: #a1a1a6;
+  --status-badge-owned-bg: rgba(48, 209, 88, 0.16);
+  --status-badge-owned-text: #30d158;
+  --status-badge-external-bg: rgba(255, 214, 10, 0.14);
+  --status-badge-external-text: #ffd60a;
+  --status-badge-running-bg: rgba(255, 159, 10, 0.16);
+  --status-badge-running-text: #ff9f0a;
+  --status-badge-input-bg: rgba(41, 151, 255, 0.16);
+  --status-badge-input-text: #2997ff;
 
   /* Shiki Syntax Highlighting (GitHub Dark inspired) */
   --shiki-foreground: #e1e4e8;
@@ -200,56 +222,56 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Backgrounds - warm ivory tones */
-  --bg-surface: #faf9f5;
-  --bg-secondary: #f5f4f0;
-  --bg-tertiary: #eeede8;
-  --bg-hover: #e8e7e2;
-  --bg-code: #f0efe9;
+  /* Backgrounds - Apple system surfaces */
+  --bg-surface: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #ededf0;
+  --bg-hover: #e8e8ed;
+  --bg-code: #f5f5f7;
   --bg-input: #ffffff;
-  --bg-overlay: rgba(0, 0, 0, 0.3);
-  --bg-user-message: #e8e7e2;
+  --bg-overlay: rgba(0, 0, 0, 0.24);
+  --bg-user-message: #e9f2ff;
 
   /* Text Colors */
-  --text-primary: #1a1a1a;
-  --text-secondary: #3a3a3a;
-  --text-muted: #5a5a5a;
-  --text-dimmed: #8a8a8a;
+  --text-primary: #1d1d1f;
+  --text-secondary: #333336;
+  --text-muted: #6e6e73;
+  --text-dimmed: #86868b;
 
   /* Border Colors */
-  --border-color: #d4d3ce;
-  --border-subtle: #e0dfd9;
-  --border-input: #c0bfb8;
+  --border-color: rgba(0, 0, 0, 0.1);
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-input: rgba(0, 0, 0, 0.16);
 
   /* Semantic Colors - adjusted for light background */
   --link-color: #0066cc;
-  --error-color: #cf222e;
-  --success-color: #1a7f37;
-  --warning-color: #9a6700;
-  --warning-badge-bg: #c2410c;
+  --error-color: #d70015;
+  --success-color: #248a3d;
+  --warning-color: #b25000;
+  --warning-badge-bg: #ff9f0a;
   --attention-color: #0066cc;
   --focus-border: #0066cc;
-  --primary-color: #2563eb;
+  --primary-color: #0066cc;
 
   /* Timeline */
-  --timeline-dot-default: #8a8a8a;
-  --timeline-dot-tool: #1a7f37;
-  --timeline-dot-error: #cf222e;
-  --timeline-dot-warning: #9a6700;
-  --timeline-dot-working: #d97757;
-  --timeline-line-color: #d4d3ce;
+  --timeline-dot-default: #86868b;
+  --timeline-dot-tool: #248a3d;
+  --timeline-dot-error: #d70015;
+  --timeline-dot-warning: #b25000;
+  --timeline-dot-working: #ff9f0a;
+  --timeline-line-color: rgba(0, 0, 0, 0.1);
 
   /* Status Colors */
-  --status-badge-idle-bg: #e8e7e2;
-  --status-badge-idle-text: #5a5a5a;
-  --status-badge-owned-bg: #d4f5d4;
-  --status-badge-owned-text: #1a7f37;
-  --status-badge-external-bg: #fff3cd;
-  --status-badge-external-text: #9a6700;
-  --status-badge-running-bg: #fde5d8;
-  --status-badge-running-text: #c6613f;
-  --status-badge-input-bg: #dbeafe;
-  --status-badge-input-text: #2563eb;
+  --status-badge-idle-bg: rgba(0, 0, 0, 0.06);
+  --status-badge-idle-text: #6e6e73;
+  --status-badge-owned-bg: rgba(36, 138, 61, 0.12);
+  --status-badge-owned-text: #248a3d;
+  --status-badge-external-bg: rgba(178, 80, 0, 0.12);
+  --status-badge-external-text: #b25000;
+  --status-badge-running-bg: rgba(255, 159, 10, 0.16);
+  --status-badge-running-text: #b25000;
+  --status-badge-input-bg: rgba(0, 102, 204, 0.12);
+  --status-badge-input-text: #0066cc;
 
   /* Shiki Syntax Highlighting (GitHub Light inspired) */
   --shiki-foreground: #24292e;
@@ -273,51 +295,51 @@
 [data-theme="auto"] {
   color-scheme: light dark;
 
-  /* Default to dark (greyish) */
-  --bg-surface: #2f2f2f;
-  --bg-secondary: #363636;
-  --bg-tertiary: #3d3d3d;
-  --bg-hover: #454545;
-  --bg-code: #292929;
-  --bg-input: #3a3a3a;
-  --bg-overlay: rgba(0, 0, 0, 0.5);
-  --bg-user-message: #484848;
+  /* Default auto fallback: graphite Apple dark */
+  --bg-surface: #161617;
+  --bg-secondary: #1f1f21;
+  --bg-tertiary: #2b2b2e;
+  --bg-hover: #333337;
+  --bg-code: #1f1f21;
+  --bg-input: #242426;
+  --bg-overlay: rgba(0, 0, 0, 0.52);
+  --bg-user-message: #2b2b2e;
 
-  --text-primary: #e0e0e0;
-  --text-secondary: #c0c0c0;
-  --text-muted: #a0a0a0;
-  --text-dimmed: #707070;
+  --text-primary: #f5f5f7;
+  --text-secondary: #d2d2d7;
+  --text-muted: #a1a1a6;
+  --text-dimmed: #6e6e73;
 
-  --border-color: #4a4a4a;
-  --border-subtle: #444444;
-  --border-input: #555555;
+  --border-color: rgba(255, 255, 255, 0.13);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.17);
 
-  --link-color: #5db5ff;
-  --error-color: #e05545;
-  --success-color: #7dd39a;
-  --warning-color: #ebd09d;
-  --warning-badge-bg: #c2410c;
-  --attention-color: #5db5ff;
-  --focus-border: #007acc;
-  --primary-color: #60a5fa;
+  --link-color: #2997ff;
+  --error-color: #ff453a;
+  --success-color: #30d158;
+  --warning-color: #ffd60a;
+  --warning-badge-bg: #ff9f0a;
+  --attention-color: #2997ff;
+  --focus-border: #2997ff;
+  --primary-color: #2997ff;
 
-  --timeline-dot-default: #a0a0a0;
-  --timeline-dot-tool: #7dd39a;
-  --timeline-dot-error: #e05545;
-  --timeline-dot-warning: #ebd09d;
-  --timeline-dot-working: #d97757;
-  --timeline-line-color: #4a4a4a;
+  --timeline-dot-default: #86868b;
+  --timeline-dot-tool: #30d158;
+  --timeline-dot-error: #ff453a;
+  --timeline-dot-warning: #ffd60a;
+  --timeline-dot-working: #ff9f0a;
+  --timeline-line-color: rgba(255, 255, 255, 0.12);
 
-  --status-badge-idle-bg: #444444;
-  --status-badge-idle-text: #999999;
-  --status-badge-owned-bg: #2a4a2a;
-  --status-badge-owned-text: #55ff55;
-  --status-badge-external-bg: #4a4a2a;
-  --status-badge-external-text: #ffff55;
-  --status-badge-running-bg: #4a3a2a;
-  --status-badge-running-text: #ffbb55;
-  --status-badge-input-bg: #2a3a5a;
-  --status-badge-input-text: #77bbff;
+  --status-badge-idle-bg: rgba(255, 255, 255, 0.08);
+  --status-badge-idle-text: #a1a1a6;
+  --status-badge-owned-bg: rgba(48, 209, 88, 0.16);
+  --status-badge-owned-text: #30d158;
+  --status-badge-external-bg: rgba(255, 214, 10, 0.14);
+  --status-badge-external-text: #ffd60a;
+  --status-badge-running-bg: rgba(255, 159, 10, 0.16);
+  --status-badge-running-text: #ff9f0a;
+  --status-badge-input-bg: rgba(41, 151, 255, 0.16);
+  --status-badge-input-text: #2997ff;
 
   /* Shiki Syntax Highlighting (GitHub Dark inspired) */
   --shiki-foreground: #e1e4e8;
@@ -340,50 +362,50 @@
   [data-theme="auto"] {
     color-scheme: light;
 
-    --bg-surface: #faf9f5;
-    --bg-secondary: #f5f4f0;
-    --bg-tertiary: #eeede8;
-    --bg-hover: #e8e7e2;
-    --bg-code: #f0efe9;
+    --bg-surface: #f5f5f7;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #ededf0;
+    --bg-hover: #e8e8ed;
+    --bg-code: #f5f5f7;
     --bg-input: #ffffff;
-    --bg-overlay: rgba(0, 0, 0, 0.3);
-    --bg-user-message: #e8e7e2;
+    --bg-overlay: rgba(0, 0, 0, 0.24);
+    --bg-user-message: #e9f2ff;
 
-    --text-primary: #1a1a1a;
-    --text-secondary: #3a3a3a;
-    --text-muted: #5a5a5a;
-    --text-dimmed: #8a8a8a;
+    --text-primary: #1d1d1f;
+    --text-secondary: #333336;
+    --text-muted: #6e6e73;
+    --text-dimmed: #86868b;
 
-    --border-color: #d4d3ce;
-    --border-subtle: #e0dfd9;
-    --border-input: #c0bfb8;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --border-subtle: rgba(0, 0, 0, 0.07);
+    --border-input: rgba(0, 0, 0, 0.16);
 
     --link-color: #0066cc;
-    --error-color: #cf222e;
-    --success-color: #1a7f37;
-    --warning-color: #9a6700;
-    --warning-badge-bg: #c2410c;
+    --error-color: #d70015;
+    --success-color: #248a3d;
+    --warning-color: #b25000;
+    --warning-badge-bg: #ff9f0a;
     --attention-color: #0066cc;
     --focus-border: #0066cc;
-    --primary-color: #2563eb;
+    --primary-color: #0066cc;
 
-    --timeline-dot-default: #8a8a8a;
-    --timeline-dot-tool: #1a7f37;
-    --timeline-dot-error: #cf222e;
-    --timeline-dot-warning: #9a6700;
-    --timeline-dot-working: #d97757;
-    --timeline-line-color: #d4d3ce;
+    --timeline-dot-default: #86868b;
+    --timeline-dot-tool: #248a3d;
+    --timeline-dot-error: #d70015;
+    --timeline-dot-warning: #b25000;
+    --timeline-dot-working: #ff9f0a;
+    --timeline-line-color: rgba(0, 0, 0, 0.1);
 
-    --status-badge-idle-bg: #e8e7e2;
-    --status-badge-idle-text: #5a5a5a;
-    --status-badge-owned-bg: #d4f5d4;
-    --status-badge-owned-text: #1a7f37;
-    --status-badge-external-bg: #fff3cd;
-    --status-badge-external-text: #9a6700;
-    --status-badge-running-bg: #fde5d8;
-    --status-badge-running-text: #c6613f;
-    --status-badge-input-bg: #dbeafe;
-    --status-badge-input-text: #2563eb;
+    --status-badge-idle-bg: rgba(0, 0, 0, 0.06);
+    --status-badge-idle-text: #6e6e73;
+    --status-badge-owned-bg: rgba(36, 138, 61, 0.12);
+    --status-badge-owned-text: #248a3d;
+    --status-badge-external-bg: rgba(178, 80, 0, 0.12);
+    --status-badge-external-text: #b25000;
+    --status-badge-running-bg: rgba(255, 159, 10, 0.16);
+    --status-badge-running-text: #b25000;
+    --status-badge-input-bg: rgba(0, 102, 204, 0.12);
+    --status-badge-input-text: #0066cc;
 
     /* Shiki Syntax Highlighting (GitHub Light inspired) */
     --shiki-foreground: #24292e;
@@ -417,6 +439,8 @@ body {
   background: var(--bg-surface);
   color: var(--text-primary);
   overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .page {
@@ -570,9 +594,11 @@ h2 {
   display: block;
   padding: 1rem;
   background: var(--bg-secondary);
-  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   text-decoration: none;
   color: inherit;
+  box-shadow: var(--shadow-resting);
 }
 
 .project-list a:hover,
@@ -598,13 +624,16 @@ h2 {
   display: block;
   padding: 1rem;
   background: var(--bg-secondary);
-  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   text-decoration: none;
   color: inherit;
+  box-shadow: var(--shadow-resting);
 }
 
 .project-card__link:hover {
   background: var(--bg-hover);
+  border-color: var(--border-color);
 }
 
 .project-card__header {
@@ -719,10 +748,10 @@ h2 {
 
 .new-session-form textarea {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem 1rem;
   background: var(--bg-input);
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: inherit;
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
@@ -741,10 +770,10 @@ h2 {
 
 .new-session-form-textarea {
   width: 100%;
-  padding: 0.75rem;
+  padding: 0.875rem 1rem;
   background: var(--bg-input);
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: inherit;
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
@@ -754,8 +783,8 @@ h2 {
 
 .new-session-form-textarea:focus {
   outline: none;
-  border-color: var(--app-yep-green);
-  box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.15);
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-border) 18%, transparent);
 }
 
 .new-session-form-toolbar {
@@ -781,7 +810,7 @@ h2 {
   padding: 0;
   background: transparent;
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
@@ -825,7 +854,10 @@ h2 {
 
 .session-header {
   flex-shrink: 0; /* Never shrink the header */
-  background: var(--bg-surface);
+  background: color-mix(in srgb, var(--bg-surface) 84%, transparent);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+  border-bottom: 1px solid var(--border-subtle);
   position: relative;
   z-index: 10;
 }
@@ -845,7 +877,11 @@ h2 {
   right: 0;
   top: 100%;
   height: 24px;
-  background: linear-gradient(to bottom, var(--bg-surface), transparent);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg-surface) 80%, transparent),
+    transparent
+  );
   pointer-events: none;
 }
 
@@ -928,8 +964,10 @@ h2 {
   bottom: 0;
   width: 280px;
   max-width: 85vw;
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+  border-right: 1px solid var(--border-subtle);
   z-index: 101;
   display: flex;
   flex-direction: column;
@@ -1083,7 +1121,7 @@ a.sidebar-nav-item {
   color: var(--text-primary);
   font-size: var(--font-size-sm);
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   text-align: left;
 }
 
@@ -1092,7 +1130,7 @@ a.sidebar-nav-item {
 }
 
 .sidebar-nav-item.active {
-  background: var(--bg-hover);
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
   color: var(--text-primary);
 }
 
@@ -1100,6 +1138,10 @@ a.sidebar-nav-item {
   color: var(--text-muted);
   flex-shrink: 0;
   min-width: 16px;
+}
+
+.sidebar-nav-item .thinking-indicator {
+  margin-left: 0.25rem;
 }
 
 .sidebar-section {
@@ -1169,21 +1211,23 @@ a.sidebar-nav-item {
 /* Sidebar Activity Badges */
 
 /* ==========================================================================
-   Unified Thinking Indicator - Pulsing dot for thinking/running state
+   Unified Thinking Indicator - Spinner for thinking/running state
    Use ThinkingIndicator component for all "thinking", "running", "processing" states
    ========================================================================== */
 
-/* The pulsing dot */
-.thinking-indicator-dot {
-  width: 8px;
-  height: 8px;
+/* The compact loading spinner */
+.thinking-indicator-spinner {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
   border-radius: 50%;
-  background: var(--thinking-color);
-  animation: thinking-pulse 1.5s ease-in-out infinite;
+  border: 2px solid color-mix(in srgb, var(--thinking-color) 28%, transparent);
+  border-top-color: var(--thinking-color);
+  animation: thinking-spin 0.8s linear infinite;
   flex-shrink: 0;
 }
 
-/* Container for standalone dot */
+/* Container for standalone spinner */
 .thinking-indicator {
   display: inline-flex;
   align-items: center;
@@ -1208,7 +1252,14 @@ a.sidebar-nav-item {
   line-height: 1;
 }
 
-/* Unified pulse animation for thinking/running state */
+/* Unified spinner animation for thinking/running state */
+@keyframes thinking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Shared by older status dots that still pulse. */
 @keyframes thinking-pulse {
   0%,
   100% {
@@ -1543,7 +1594,7 @@ a.sidebar-nav-item {
 /* User prompts - compact bubble that shrinks to fit content */
 .message-user-prompt {
   background: var(--bg-user-message);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   margin-left: 0;
   width: fit-content;
   max-width: 80%;
@@ -1688,16 +1739,22 @@ a.sidebar-nav-item {
 .assistant-turn {
   position: relative;
   padding-left: 24px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .message-content {
+  min-width: 0;
+  max-width: 100%;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* Message input wrapper with collapse toggle */
 .message-input-wrapper {
   position: relative;
+  --mobile-composer-textarea-height: 2.5rem;
 }
 
 .message-input-toggle {
@@ -1711,9 +1768,9 @@ a.sidebar-nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-code);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -1742,14 +1799,22 @@ a.sidebar-nav-item {
 
 .message-input textarea {
   flex: 1;
-  padding: 0.75rem;
+  padding: 0.875rem 1rem;
   background: var(--bg-input);
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   color: inherit;
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
   resize: none;
+}
+
+.message-input textarea:focus,
+.new-session-form textarea:focus,
+.sidebar-new-session textarea:focus {
+  outline: none;
+  border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-border) 18%, transparent);
 }
 
 /* Collapsed state - when approval panel is showing above */
@@ -1764,9 +1829,30 @@ a.sidebar-nav-item {
 }
 
 .message-input-collapsed textarea {
+  height: var(--mobile-composer-textarea-height);
+  min-height: var(--mobile-composer-textarea-height);
+  max-height: var(--mobile-composer-textarea-height);
+  box-sizing: border-box;
   padding: 0.5rem 0.75rem;
   font-size: var(--font-size-sm);
-  min-height: 0;
+  line-height: 1.4;
+  overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+  .message-input:not(.message-input-collapsed) {
+    gap: 0.375rem;
+  }
+
+  .message-input:not(.message-input-collapsed) textarea {
+    height: var(--mobile-composer-textarea-height);
+    min-height: var(--mobile-composer-textarea-height);
+    max-height: var(--mobile-composer-textarea-height);
+    box-sizing: border-box;
+    padding: 0.5rem 0.875rem;
+    line-height: 1.4;
+    overflow-y: auto;
+  }
 }
 
 .message-input-toolbar {
@@ -1784,7 +1870,7 @@ a.sidebar-nav-item {
   padding: 0.25rem 0.625rem;
   background: var(--status-badge-input-bg);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--status-badge-input-text);
   font-size: var(--font-size-xs);
   cursor: pointer;
@@ -1819,7 +1905,7 @@ a.sidebar-nav-item {
   padding: 0.25rem 0.75rem;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -2062,14 +2148,14 @@ a.sidebar-nav-item {
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   cursor: pointer;
   transition: opacity 0.15s;
   flex-shrink: 0;
 }
 
 .send-button {
-  background: var(--app-yep-green);
+  background: var(--primary-color);
   color: white;
 }
 
@@ -2189,7 +2275,7 @@ a.sidebar-nav-item {
   padding: var(--space-1);
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   font-size: var(--font-size-sm);
   cursor: pointer;
@@ -2214,7 +2300,7 @@ a.sidebar-nav-item {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  background: var(--app-yep-green);
+  background: var(--primary-color);
   color: white;
   border-radius: 8px;
   font-size: var(--font-size-xs);
@@ -2232,7 +2318,7 @@ a.sidebar-nav-item {
   padding: var(--space-1);
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -2273,7 +2359,7 @@ a.sidebar-nav-item {
   padding: var(--space-1);
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
@@ -4170,8 +4256,8 @@ a.sidebar-nav-item {
 
 .btn-primary,
 .btn-secondary {
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   cursor: pointer;
   border: none;
@@ -4179,12 +4265,12 @@ a.sidebar-nav-item {
 }
 
 .btn-primary {
-  background: var(--app-yep-green-dark);
+  background: var(--primary-color);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--app-yep-green);
+  background: var(--link-color);
 }
 
 .btn-primary:disabled {
@@ -4220,9 +4306,9 @@ a.sidebar-nav-item {
   min-width: 200px;
   max-width: 400px;
   padding: var(--space-2) var(--space-3);
-  background: var(--bg-code);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-primary);
   font-size: var(--font-size-sm);
 }
@@ -4230,6 +4316,7 @@ a.sidebar-nav-item {
 .filter-search:focus {
   outline: none;
   border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-border) 16%, transparent);
 }
 
 .filter-search::placeholder {
@@ -4259,10 +4346,10 @@ a.sidebar-nav-item {
   align-items: center;
   justify-content: center;
   padding: var(--space-2) var(--space-3);
-  background: var(--bg-secondary);
+  background: var(--bg-input);
   border: 1px solid var(--border-color);
   border-left: none;
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -5279,6 +5366,10 @@ a.sidebar-nav-item {
     padding: 0.5rem;
   }
 
+  .sidebar-collapsed .sidebar-nav-item .thinking-indicator {
+    margin-left: 0;
+  }
+
   /* Sidebar resize handle */
   .sidebar-resize-handle {
     position: absolute;
@@ -5831,6 +5922,10 @@ a.sidebar-nav-item {
   width: 100%;
   max-width: 360px;
   padding: var(--space-4);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-resting);
 }
 
 .login-subtitle {
@@ -5858,9 +5953,9 @@ a.sidebar-nav-item {
 }
 
 .login-field input {
-  padding: var(--space-2) var(--space-3);
+  padding: 0.75rem 0.875rem;
   border: 1px solid var(--border-input);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   background: var(--bg-input);
   color: var(--text-primary);
   font-size: var(--font-size-base);
@@ -5869,6 +5964,7 @@ a.sidebar-nav-item {
 .login-field input:focus {
   outline: none;
   border-color: var(--focus-border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-border) 18%, transparent);
 }
 
 .login-field-hint {
@@ -5897,7 +5993,7 @@ a.sidebar-nav-item {
   height: 16px;
   margin: 0;
   cursor: pointer;
-  accent-color: var(--app-yep-green);
+  accent-color: var(--primary-color);
 }
 
 .login-error {
@@ -5910,10 +6006,10 @@ a.sidebar-nav-item {
 }
 
 .login-button {
-  padding: var(--space-2) var(--space-4);
+  padding: 0.75rem var(--space-4);
   border: none;
-  border-radius: var(--radius-md);
-  background: var(--app-yep-green);
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
   color: white;
   font-size: var(--font-size-base);
   font-weight: 500;
@@ -5922,7 +6018,7 @@ a.sidebar-nav-item {
 }
 
 .login-button:hover:not(:disabled) {
-  background: var(--app-yep-green-dark);
+  background: var(--link-color);
 }
 
 .login-button:disabled {
@@ -5946,7 +6042,7 @@ a.sidebar-nav-item {
   width: 24px;
   height: 24px;
   border: 2px solid var(--border-muted);
-  border-top-color: var(--app-yep-green);
+  border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   margin: 0 auto;
@@ -6621,13 +6717,16 @@ a.sidebar-nav-item {
   flex: 1;
   padding: 1rem;
   background: var(--bg-secondary);
-  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   text-decoration: none;
   color: inherit;
+  box-shadow: var(--shadow-resting);
 }
 
 .session-list-item--card .session-list-item__link:hover {
   background: var(--bg-hover);
+  border-color: var(--border-color);
 }
 
 .session-list-item--card .session-list-item__title {
@@ -6673,7 +6772,7 @@ a.sidebar-nav-item {
   flex: 1;
   padding: var(--space-2) var(--space-3);
   padding-left: calc(var(--space-3) + 4px);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   text-decoration: none;
   color: var(--text-primary);
   overflow: hidden;
@@ -6710,8 +6809,12 @@ a.sidebar-nav-item {
   flex-shrink: 0;
 }
 
+.session-list-item__project-compact + .thinking-indicator {
+  margin-left: var(--space-2);
+}
+
 .session-list-item--compact.current .session-list-item__link {
-  background: var(--bg-hover);
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
   font-weight: 500;
 }
 
@@ -6746,7 +6849,7 @@ a.sidebar-nav-item {
 .session-badge {
   font-size: var(--font-size-xs);
   padding: 2px 6px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-weight: 500;
   flex-shrink: 0;
 }

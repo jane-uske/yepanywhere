@@ -182,6 +182,52 @@ describe("CodexSessionReader - OSS Support", () => {
     expect(summary?.provider).toBe("codex");
   });
 
+  it("marks an unfinished Codex turn as external in-turn", async () => {
+    const sessionId = "active-turn-session";
+    await createSessionFile(sessionId, "openai", "gpt-5.1-codex");
+    await writeFile(
+      join(testDir, `${sessionId}.jsonl`),
+      `${[
+        JSON.stringify({
+          type: "session_meta",
+          timestamp: new Date().toISOString(),
+          payload: {
+            id: sessionId,
+            cwd: "/test/project",
+            timestamp: new Date().toISOString(),
+            model_provider: "openai",
+          },
+        }),
+        JSON.stringify({
+          type: "event_msg",
+          timestamp: new Date().toISOString(),
+          payload: {
+            type: "user_message",
+            message: "Run the long task",
+          },
+        }),
+        JSON.stringify({
+          type: "event_msg",
+          timestamp: new Date().toISOString(),
+          payload: {
+            type: "task_started",
+            turn_id: "turn-active",
+            model_context_window: 258400,
+            collaboration_mode_kind: "default",
+          },
+        }),
+      ].join("\n")}\n`,
+    );
+
+    const summary = await reader.getSessionSummary(
+      sessionId,
+      "test-project" as UrlProjectId,
+    );
+
+    expect(summary?.ownership).toEqual({ owner: "external" });
+    expect(summary?.activity).toBe("in-turn");
+  });
+
   it("filters mixed-slash Windows cwd variants as the same project", async () => {
     const sessionId = "windows-mixed-slash";
     await createSessionFile(

@@ -1,18 +1,20 @@
 import { stat } from "node:fs/promises";
 import * as path from "node:path";
 import {
+  type AgentActivity,
   type DirProjectId,
   type UrlProjectId,
   asDirProjectId,
 } from "@yep-anywhere/shared";
 import { encodeProjectId } from "../projects/paths.js";
 import type { ProjectScanner } from "../projects/scanner.js";
-import { readFirstLine } from "../utils/jsonl.js";
+import { readFirstLine, readJsonlTailLines } from "../utils/jsonl.js";
 import { BatchProcessor } from "../watcher/BatchProcessor.js";
 import type {
   BusEvent,
   EventBus,
   FileChangeEvent,
+  ProcessStateEvent,
   SessionAbortedEvent,
   SessionCreatedEvent,
   SessionStatusEvent,
@@ -34,11 +36,17 @@ interface ExternalSessionInfo {
   projectId?: UrlProjectId;
   /** Session provider */
   provider: FileChangeEvent["provider"];
+  /** Session file path, used for provider-specific activity rechecks */
+  filePath?: string;
+  /** Last inferred activity for this external session */
+  activity?: AgentActivity;
   timeoutId: ReturnType<typeof setTimeout>;
 }
 
 /** Default grace period after abort before external detection resumes (30 seconds) */
 const DEFAULT_ABORT_GRACE_MS = 30000;
+const CODEX_ACTIVITY_TAIL_CHUNK_BYTES = 256 * 1024;
+const CODEX_TASK_STARTED_LINE_RE = /"type"\s*:\s*"task_started"/;
 
 export interface ExternalSessionTrackerOptions {
   eventBus: EventBus;
@@ -292,6 +300,13 @@ export class ExternalSessionTracker {
   }
 
   /**
+   * Get the last inferred activity for an external session.
+   */
+  getExternalActivity(sessionId: string): AgentActivity | undefined {
+    return this.externalSessions.get(sessionId)?.activity;
+  }
+
+  /**
    * Mark a session as recently aborted. During the grace period, file changes
    * won't trigger external session detection (they're from our own cleanup).
    * Called by Supervisor when a process is aborted.
@@ -451,7 +466,13 @@ export class ExternalSessionTracker {
     const projectId = await this.readCodexProjectIdFromFile(event.path);
     if (!projectId) return;
 
-    this.markExternal(sessionId, { provider: event.provider, projectId });
+    const activity = await this.inferCodexActivityFromFile(event.path);
+    this.markExternal(sessionId, {
+      provider: event.provider,
+      projectId,
+      filePath: event.path,
+      activity,
+    });
     await this.ensureCodexSessionCreated(sessionId, event.path, projectId);
   }
 
@@ -537,12 +558,102 @@ export class ExternalSessionTracker {
     }
   }
 
+  private async inferCodexActivityFromFile(
+    filePath: string,
+  ): Promise<AgentActivity | undefined> {
+    try {
+      const tail = await readJsonlTailLines(filePath, {
+        boundaryCount: 1,
+        isBoundaryLine: (line) => CODEX_TASK_STARTED_LINE_RE.test(line),
+        chunkSize: CODEX_ACTIVITY_TAIL_CHUNK_BYTES,
+      });
+      return this.inferCodexActivityFromLines(tail.lines);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private inferCodexActivityFromLines(
+    lines: string[],
+  ): AgentActivity | undefined {
+    const openTurns = new Set<string>();
+    const pendingCalls = new Set<string>();
+    let sawTaskStarted = false;
+
+    for (const line of lines) {
+      let entry: {
+        type?: string;
+        payload?: {
+          type?: string;
+          turn_id?: string;
+          call_id?: string;
+          id?: string;
+          status?: string;
+        };
+      };
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        continue;
+      }
+
+      const payload = entry.payload;
+      if (!payload) continue;
+
+      if (entry.type === "event_msg") {
+        if (payload.type === "task_started") {
+          sawTaskStarted = true;
+          openTurns.add(payload.turn_id ?? "__unknown_turn__");
+        } else if (
+          payload.type === "task_complete" ||
+          payload.type === "turn_aborted"
+        ) {
+          if (payload.turn_id) {
+            openTurns.delete(payload.turn_id);
+          } else {
+            openTurns.clear();
+          }
+          pendingCalls.clear();
+        }
+        continue;
+      }
+
+      if (entry.type !== "response_item") continue;
+
+      const callId = payload.call_id ?? payload.id;
+      if (
+        payload.type === "function_call" ||
+        payload.type === "custom_tool_call" ||
+        payload.type === "web_search_call"
+      ) {
+        if (callId && payload.status !== "completed") {
+          pendingCalls.add(callId);
+        }
+      } else if (
+        payload.type === "function_call_output" ||
+        payload.type === "custom_tool_call_output"
+      ) {
+        if (callId) pendingCalls.delete(callId);
+      }
+    }
+
+    if (openTurns.size > 0 || pendingCalls.size > 0) {
+      return "in-turn";
+    }
+    if (sawTaskStarted) {
+      return "idle";
+    }
+    return undefined;
+  }
+
   private markExternal(
     sessionId: string,
     info: {
       provider: FileChangeEvent["provider"];
       dirProjectId?: DirProjectId;
       projectId?: UrlProjectId;
+      filePath?: string;
+      activity?: AgentActivity;
     },
   ): void {
     const now = new Date();
@@ -552,7 +663,15 @@ export class ExternalSessionTracker {
       // Update last activity and reset timer
       clearTimeout(existing.timeoutId);
       existing.lastActivity = now;
+      existing.dirProjectId = info.dirProjectId ?? existing.dirProjectId;
+      existing.projectId = info.projectId ?? existing.projectId;
+      existing.filePath = info.filePath ?? existing.filePath;
+      existing.provider = info.provider;
+      existing.activity = info.activity ?? existing.activity;
       existing.timeoutId = this.createDecayTimeout(sessionId);
+      if (info.activity) {
+        void this.emitActivityChangeByInfo(sessionId, existing, info.activity);
+      }
       // Always parse to detect changes (title, messageCount)
       if (this.getSessionSummary) {
         const getSessionSummary = this.getSessionSummary;
@@ -570,6 +689,8 @@ export class ExternalSessionTracker {
         dirProjectId: info.dirProjectId,
         projectId: info.projectId,
         provider: info.provider,
+        filePath: info.filePath,
+        activity: info.activity,
         timeoutId: this.createDecayTimeout(sessionId),
       };
       this.externalSessions.set(sessionId, externalInfo);
@@ -588,6 +709,13 @@ export class ExternalSessionTracker {
       void this.emitOwnershipChangeByInfo(sessionId, externalInfo, {
         owner: "external",
       });
+      if (externalInfo.activity) {
+        void this.emitActivityChangeByInfo(
+          sessionId,
+          externalInfo,
+          externalInfo.activity,
+        );
+      }
     }
   }
 
@@ -601,18 +729,40 @@ export class ExternalSessionTracker {
       void this.emitOwnershipChangeByInfo(sessionId, existing, {
         owner: "none",
       });
+      void this.emitActivityChangeByInfo(sessionId, existing, "idle");
     }
   }
 
   private createDecayTimeout(sessionId: string): ReturnType<typeof setTimeout> {
     return setTimeout(() => {
-      const info = this.externalSessions.get(sessionId);
-      if (info) {
-        this.externalSessions.delete(sessionId);
-        // Emit ownership change to none
-        void this.emitOwnershipChangeByInfo(sessionId, info, { owner: "none" });
-      }
+      void this.handleExternalDecay(sessionId);
     }, this.decayMs);
+  }
+
+  private async handleExternalDecay(sessionId: string): Promise<void> {
+    const info = this.externalSessions.get(sessionId);
+    if (!info) return;
+
+    if (info.provider === "codex" && info.filePath) {
+      const activity = await this.inferCodexActivityFromFile(info.filePath);
+      if (this.externalSessions.get(sessionId) !== info) return;
+
+      if (activity === "in-turn") {
+        info.activity = activity;
+        info.lastActivity = new Date();
+        info.timeoutId = this.createDecayTimeout(sessionId);
+        await this.emitActivityChangeByInfo(sessionId, info, activity);
+        return;
+      }
+
+      if (activity) {
+        info.activity = activity;
+      }
+    }
+
+    this.externalSessions.delete(sessionId);
+    await this.emitOwnershipChangeByInfo(sessionId, info, { owner: "none" });
+    await this.emitActivityChangeByInfo(sessionId, info, "idle");
   }
 
   private async emitOwnershipChangeByInfo(
@@ -654,6 +804,24 @@ export class ExternalSessionTracker {
     };
 
     // Emit through EventBus so it gets broadcast via SSE
+    this.eventBus.emit(event);
+  }
+
+  private async emitActivityChangeByInfo(
+    sessionId: string,
+    info: ExternalSessionInfo,
+    activity: AgentActivity,
+  ): Promise<void> {
+    const project = await this.resolveProjectForSession(info);
+    if (!project) return;
+
+    const event: ProcessStateEvent = {
+      type: "process-state-changed",
+      sessionId,
+      projectId: project.id as UrlProjectId,
+      activity,
+      timestamp: new Date().toISOString(),
+    };
     this.eventBus.emit(event);
   }
 

@@ -1533,25 +1533,34 @@ export class CodexProvider implements AgentProvider {
 
       case "item/tool/requestUserInput": {
         const requestInput = this.asToolRequestUserInputParams(request.params);
-        const questions = requestInput?.questions ?? [];
-
-        // MVP: return empty answers so request can complete without blocking.
-        const answers: ToolRequestUserInputResponse["answers"] = {};
-        for (const question of questions) {
-          answers[question.id] = { answers: [] };
+        if (!requestInput) {
+          log.warn(
+            {
+              method: request.method,
+              requestId: request.id,
+            },
+            "Codex tool user-input params invalid; returning no answers",
+          );
+          return { answers: {} } satisfies ToolRequestUserInputResponse;
         }
+
+        const response = await this.resolveToolUserInput(
+          options,
+          requestInput,
+          signal,
+        );
         log.warn(
           {
             method: request.method,
             requestId: request.id,
-            questionCount: questions.length,
-            threadId: requestInput?.threadId ?? null,
-            turnId: requestInput?.turnId ?? null,
-            itemId: requestInput?.itemId ?? null,
+            questionCount: requestInput.questions.length,
+            answeredQuestionCount: Object.keys(response.answers).length,
+            threadId: requestInput.threadId,
+            turnId: requestInput.turnId,
+            itemId: requestInput.itemId,
           },
-          "Codex requested tool user input; returning empty answers in MVP",
+          "Resolved Codex tool user-input request",
         );
-        const response: ToolRequestUserInputResponse = { answers };
         return response;
       }
 
@@ -1563,6 +1572,97 @@ export class CodexProvider implements AgentProvider {
         return {};
       }
     }
+  }
+
+  private async resolveToolUserInput(
+    options: StartSessionOptions,
+    requestInput: ToolRequestUserInputParams,
+    signal: AbortSignal,
+  ): Promise<ToolRequestUserInputResponse> {
+    if (!options.onToolApproval) {
+      log.warn(
+        {
+          threadId: requestInput.threadId,
+          turnId: requestInput.turnId,
+          itemId: requestInput.itemId,
+        },
+        "No onToolApproval handler available for Codex user-input request",
+      );
+      return { answers: {} };
+    }
+
+    const questions = requestInput.questions.map((question) => ({
+      question: question.question,
+      header: question.header,
+      options: question.options ?? [],
+      multiSelect: false,
+      id: question.id,
+      isOther: question.isOther,
+      isSecret: question.isSecret,
+    }));
+
+    let result: ToolApprovalResult;
+    try {
+      result = await options.onToolApproval(
+        "AskUserQuestion",
+        {
+          questions,
+          threadId: requestInput.threadId,
+          turnId: requestInput.turnId,
+          itemId: requestInput.itemId,
+        },
+        { signal },
+      );
+    } catch (error) {
+      log.warn(
+        { error },
+        "onToolApproval threw while handling Codex user-input request",
+      );
+      return { answers: {} };
+    }
+
+    if (result.behavior !== "allow") {
+      return { answers: {} };
+    }
+
+    const rawAnswers =
+      result.updatedInput &&
+      typeof result.updatedInput === "object" &&
+      !Array.isArray(result.updatedInput) &&
+      (result.updatedInput as { answers?: unknown }).answers &&
+      typeof (result.updatedInput as { answers?: unknown }).answers ===
+        "object" &&
+      !Array.isArray((result.updatedInput as { answers?: unknown }).answers)
+        ? (result.updatedInput as { answers: Record<string, unknown> }).answers
+        : {};
+
+    const answers: ToolRequestUserInputResponse["answers"] = {};
+    for (const question of requestInput.questions) {
+      const answerValue =
+        rawAnswers[question.id] ?? rawAnswers[question.question];
+      const normalizedAnswers = this.normalizeToolUserInputAnswer(answerValue);
+      if (normalizedAnswers.length > 0) {
+        answers[question.id] = { answers: normalizedAnswers };
+      }
+    }
+
+    return { answers };
+  }
+
+  private normalizeToolUserInputAnswer(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed ? [trimmed] : [];
+    }
+
+    return [];
   }
 
   private async resolveApprovalDecision<TDecision extends string>(

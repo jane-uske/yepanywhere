@@ -5,6 +5,8 @@
    ========================================================================== */
 
 .code-block {
+  box-sizing: border-box;
+  max-width: 100%;
   background: var(--bg-code);
   border: 1px solid var(--border-color);
   border-radius: 6px;
@@ -30,10 +32,13 @@
 
 .text-block,
 .text-content {
+  min-width: 0;
+  max-width: 100%;
   font-size: var(--font-size-base);
   line-height: 1.5;
   color: var(--text-primary);
   position: relative;
+  overflow-wrap: anywhere;
 }
 
 /* Copy button for text blocks */
@@ -118,11 +123,15 @@
 
 /* Container for completed server-rendered blocks */
 .streaming-blocks {
+  min-width: 0;
+  max-width: 100%;
   /* Blocks are inserted as child divs with .streaming-block class */
 }
 
 /* Individual block rendered by server */
 .streaming-block {
+  min-width: 0;
+  max-width: 100%;
   /* Inherits text-block styles - no additional styling needed */
 }
 
@@ -157,6 +166,8 @@
 /* Pre blocks in streaming */
 .streaming-blocks pre,
 .streaming-block pre {
+  box-sizing: border-box;
+  max-width: 100%;
   background: var(--bg-code);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -1008,11 +1019,14 @@ details[open] .collapsible__icon {
    ========================================================================== */
 
 .diff-view {
+  min-width: 0;
+  max-width: 100%;
   font-family: "SF Mono", Monaco, monospace;
   font-size: var(--font-size-base);
 }
 
 .diff-hunk {
+  max-width: 100%;
   margin: 0.5rem 0;
   border: 1px solid var(--border-color);
   border-radius: 4px;
@@ -1024,6 +1038,8 @@ details[open] .collapsible__icon {
 }
 
 .diff-content {
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 0;
   padding: 0;
   background: var(--bg-code);
@@ -1052,6 +1068,8 @@ details[open] .collapsible__icon {
 
 /* Highlighted diff from shiki */
 .highlighted-diff {
+  min-width: 0;
+  max-width: 100%;
   font-family: "SF Mono", Monaco, monospace;
   font-size: var(--font-size-base);
   line-height: 1.5;
@@ -1059,6 +1077,8 @@ details[open] .collapsible__icon {
 }
 
 .highlighted-diff pre.shiki {
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 0;
   padding: 0.5rem;
   background: var(--bg-code) !important;
@@ -1105,10 +1125,11 @@ details[open] .collapsible__icon {
 /* Diff view container with truncation */
 .diff-view-container {
   position: relative;
+  --diff-preview-max-height: 18rem;
 }
 
 .diff-view-container.truncated {
-  max-height: 18rem; /* ~12 lines */
+  max-height: var(--diff-preview-max-height); /* ~12 desktop lines */
   overflow: hidden;
 }
 
@@ -2715,6 +2736,49 @@ details[open] .collapsible__icon {
 
   .diff-view {
     font-size: var(--font-size-sm);
+  }
+
+  .diff-view-container {
+    --diff-preview-max-height: 10rem;
+  }
+
+  .diff-hunk {
+    margin: 0.25rem 0;
+  }
+
+  .diff-content > div {
+    padding: 0 0.375rem;
+    line-height: 1.35;
+  }
+
+  .highlighted-diff {
+    font-size: var(--font-size-xs);
+    line-height: 1.35;
+  }
+
+  .highlighted-diff pre.shiki {
+    padding: 0.25rem 0;
+  }
+
+  .highlighted-diff .line {
+    padding: 0 0.375rem;
+    font-size: var(--font-size-xs);
+  }
+
+  .edit-result,
+  .edit-collapsed-preview {
+    gap: 0.25rem;
+  }
+
+  .edit-change-summary {
+    font-size: var(--font-size-sm);
+  }
+
+  .diff-expand-button {
+    bottom: 0.375rem;
+    right: 0.375rem;
+    padding: 0.2rem 0.5rem;
+    font-size: var(--font-size-xs);
   }
 
   .file-content-with-lines {

@@ -1054,6 +1054,26 @@ export class Process {
     return Process.globToRegex(glob).test(commandStr);
   }
 
+  private static getQuestionPrompt(input: unknown): string {
+    if (input && typeof input === "object" && !Array.isArray(input)) {
+      const questions = (input as { questions?: unknown }).questions;
+      if (Array.isArray(questions)) {
+        const firstQuestion = questions.find(
+          (question): question is { question: string } =>
+            !!question &&
+            typeof question === "object" &&
+            !Array.isArray(question) &&
+            typeof (question as { question?: unknown }).question === "string",
+        );
+        if (firstQuestion?.question.trim()) {
+          return firstQuestion.question.trim();
+        }
+      }
+    }
+
+    return "Agent needs your input";
+  }
+
   /**
    * Check permission rules (deny/allow patterns) against a tool invocation.
    * Returns a ToolApprovalResult if a rule matches, or undefined to fall through.
@@ -1227,12 +1247,17 @@ export class Process {
       }
     }
 
-    // Default behavior: ask user for approval
+    const isUserQuestion = toolName === "AskUserQuestion";
+    const questionPrompt = isUserQuestion
+      ? Process.getQuestionPrompt(input)
+      : undefined;
+
+    // Default behavior: ask user for approval or question input.
     const request: InputRequest = {
       id: randomUUID(),
       sessionId: this._sessionId,
-      type: "tool-approval",
-      prompt: `Allow ${toolName}?`,
+      type: isUserQuestion ? "question" : "tool-approval",
+      prompt: questionPrompt ?? `Allow ${toolName}?`,
       toolName,
       toolInput: input,
       timestamp: new Date().toISOString(),

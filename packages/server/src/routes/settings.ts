@@ -8,6 +8,7 @@ import {
   type NewSessionDefaults,
   type PermissionMode,
   type ProviderName,
+  type ThinkingOption,
 } from "@yep-anywhere/shared";
 import { Hono } from "hono";
 import { testSSHConnection } from "../sdk/remote-spawn.js";
@@ -115,6 +116,34 @@ function parseNewSessionDefaults(
       input.permissionMode.length > 0
     ) {
       parsed.permissionMode = input.permissionMode as PermissionMode;
+    }
+  }
+
+  if ("thinking" in input) {
+    if (
+      input.thinking !== undefined &&
+      input.thinking !== null &&
+      input.thinking !== "" &&
+      typeof input.thinking !== "string"
+    ) {
+      return null;
+    }
+    if (typeof input.thinking === "string" && input.thinking.length > 0) {
+      const validThinking =
+        input.thinking === "off" ||
+        input.thinking === "auto" ||
+        input.thinking === "low" ||
+        input.thinking === "medium" ||
+        input.thinking === "high" ||
+        input.thinking === "max" ||
+        input.thinking === "on:low" ||
+        input.thinking === "on:medium" ||
+        input.thinking === "on:high" ||
+        input.thinking === "on:max";
+      if (!validThinking) {
+        return null;
+      }
+      parsed.thinking = input.thinking as ThinkingOption;
     }
   }
 

@@ -36,7 +36,7 @@ import {
 } from "../hooks/useSession";
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
-import { preprocessMessages } from "../lib/preprocessMessages";
+import { getCodexSlashCommandsForSession } from "../lib/codexSlashCommands";
 import { generateUUID } from "../lib/uuid";
 import { getSessionDisplayTitle } from "../utils";
 
@@ -198,13 +198,12 @@ function SessionPageContent({
 
   // Inject custom client-side commands alongside SDK-discovered ones
   const allSlashCommands = useMemo(() => {
-    if (status.owner === "self") {
-      return slashCommands.includes("model")
-        ? slashCommands
-        : ["model", ...slashCommands];
-    }
-    return slashCommands;
-  }, [slashCommands, status.owner]);
+    return getCodexSlashCommandsForSession(
+      effectiveProvider,
+      status.owner,
+      slashCommands,
+    );
+  }, [effectiveProvider, slashCommands, status.owner]);
 
   // Get provider capabilities based on session's provider
   const { providers } = useProviders();
@@ -500,19 +499,12 @@ function SessionPageContent({
     [setSessionModel, showToast, t],
   );
 
-  const handleCustomCommand = useCallback((command: string) => {
-    if (command === "model") {
-      setShowModelSwitchModal(true);
-      return true;
-    }
-    return false;
-  }, []);
-
-  const handleAbort = async () => {
-    if (status.owner === "self" && status.processId) {
+  const activeProcessId = status.owner === "self" ? status.processId : null;
+  const handleAbort = useCallback(async () => {
+    if (activeProcessId) {
       // Try interrupt first (graceful stop), fall back to abort if not supported
       try {
-        const result = await api.interruptProcess(status.processId);
+        const result = await api.interruptProcess(activeProcessId);
         if (result.interrupted) {
           // Successfully interrupted - process is still alive
           return;
@@ -522,9 +514,38 @@ function SessionPageContent({
         // Interrupt endpoint failed (404 = old server, or other error)
       }
       // Fall back to abort (kills the process)
-      await api.abortProcess(status.processId);
+      await api.abortProcess(activeProcessId);
     }
-  };
+  }, [activeProcessId]);
+
+  const handleCustomCommand = useCallback(
+    (command: string) => {
+      if (command === "model") {
+        setShowModelSwitchModal(true);
+        return true;
+      }
+      if (command === "status") {
+        setShowProcessInfoModal(true);
+        return true;
+      }
+      if (command === "stop") {
+        void handleAbort();
+        return true;
+      }
+      if (command === "new") {
+        navigate(
+          `${basePath}/new-session?projectId=${encodeURIComponent(projectId)}`,
+        );
+        return true;
+      }
+      if (command === "help") {
+        showToast("/model /status /stop /new /help", "info");
+        return true;
+      }
+      return false;
+    },
+    [basePath, handleAbort, navigate, projectId, showToast],
+  );
 
   const handleApprove = useCallback(async () => {
     if (pendingInputRequest) {
@@ -696,17 +717,6 @@ function SessionPageContent({
     processState === "in-turn" ||
     processState === "waiting-input" ||
     (hasSessionUpdateStream && !sessionUpdatesConnected);
-
-  // Detect if session has pending tool calls without results
-  // This can happen when the session is unowned but was active in another process (VS Code, CLI)
-  // that is waiting for user input (tool approval, question answer)
-  const hasPendingToolCalls = useMemo(() => {
-    if (status.owner !== "none") return false;
-    const items = preprocessMessages(messages);
-    return items.some(
-      (item) => item.type === "tool_call" && item.status === "pending",
-    );
-  }, [messages, status.owner]);
 
   // Compute display title - priority:
   // 1. Local custom title (user renamed in this session)
@@ -1086,18 +1096,6 @@ function SessionPageContent({
             />
           )}
 
-        {status.owner === "external" && (
-          <div className="external-session-warning">
-            {t("sessionExternalWarning")}
-          </div>
-        )}
-
-        {hasPendingToolCalls && (
-          <div className="external-session-warning pending-tool-warning">
-            {t("sessionPendingElsewhereWarning")}
-          </div>
-        )}
-
         <main className="session-messages">
           {loading ? (
             <div className="loading">{t("sessionLoading")}</div>
@@ -1118,7 +1116,8 @@ function SessionPageContent({
                   messages={messages}
                   provider={session?.provider}
                   isProcessing={
-                    status.owner === "self" && processState === "in-turn"
+                    (status.owner === "self" || status.owner === "external") &&
+                    processState === "in-turn"
                   }
                   isCompacting={isCompacting}
                   scrollTrigger={scrollTrigger}
@@ -1237,7 +1236,9 @@ function SessionPageContent({
                 onAttach={handleAttach}
                 onRemoveAttachment={handleRemoveAttachment}
                 uploadProgress={uploadProgress}
-                slashCommands={status.owner === "self" ? allSlashCommands : []}
+                slashCommands={
+                  status.owner === "external" ? [] : allSlashCommands
+                }
                 onCustomCommand={handleCustomCommand}
               />
             )}

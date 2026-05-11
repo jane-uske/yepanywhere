@@ -176,6 +176,35 @@ describe("Settings Routes", () => {
         lifecycleWebhookDryRun: false,
       });
     });
+
+    it("accepts thinking defaults for new sessions", async () => {
+      const routes = createSettingsRoutes({
+        serverSettingsService: mockServerSettingsService,
+      });
+
+      const response = await routes.request("/", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newSessionDefaults: {
+            provider: "codex",
+            model: "gpt-5.5",
+            permissionMode: "bypassPermissions",
+            thinking: "on:high",
+          },
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockServerSettingsService.updateSettings).toHaveBeenCalledWith({
+        newSessionDefaults: {
+          provider: "codex",
+          model: "gpt-5.5",
+          permissionMode: "bypassPermissions",
+          thinking: "on:high",
+        },
+      });
+    });
   });
 
   describe("POST /remote-executors/:host/test", () => {

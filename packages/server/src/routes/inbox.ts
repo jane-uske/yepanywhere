@@ -22,6 +22,7 @@ import type { CodexSessionReader } from "../sessions/codex-reader.js";
 import type { GeminiSessionReader } from "../sessions/gemini-reader.js";
 import { listSessionsAcrossProviders } from "../sessions/provider-resolution.js";
 import type { ISessionReader } from "../sessions/types.js";
+import type { ExternalSessionTracker } from "../supervisor/ExternalSessionTracker.js";
 import type { Supervisor } from "../supervisor/Supervisor.js";
 import type {
   AgentActivity,
@@ -35,6 +36,7 @@ export interface InboxDeps {
   scanner: ProjectScanner;
   readerFactory: (project: Project) => ISessionReader;
   supervisor?: Supervisor;
+  externalTracker?: ExternalSessionTracker;
   notificationService?: NotificationService;
   sessionIndexService?: SessionIndexService;
   sessionMetadataService?: SessionMetadataService;
@@ -140,9 +142,11 @@ export function createInboxRoutes(deps: InboxDeps): Hono {
         if (isArchived) continue;
 
         let pendingInputType: PendingInputType | undefined;
-        let activity: AgentActivity | undefined;
+        let activity: AgentActivity | undefined = session.activity;
 
         const process = deps.supervisor?.getProcessForSession(session.id);
+        const isExternal =
+          deps.externalTracker?.isExternal(session.id) ?? false;
         if (process) {
           const pendingRequest = process.getPendingInputRequest();
           if (pendingRequest) {
@@ -155,6 +159,8 @@ export function createInboxRoutes(deps: InboxDeps): Hono {
           if (state === "in-turn" || state === "waiting-input") {
             activity = state;
           }
+        } else if (isExternal) {
+          activity = deps.externalTracker?.getExternalActivity?.(session.id);
         }
 
         const hasUnread = deps.notificationService

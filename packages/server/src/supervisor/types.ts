@@ -74,6 +74,8 @@ export interface SessionSummary {
   updatedAt: string;
   messageCount: number;
   ownership: SessionOwnership;
+  /** Current activity if known (e.g., externally running Codex turn) */
+  activity?: AgentActivity;
   // Notification fields (added by enrichSessionsWithNotifications)
   /** Type of pending input if session needs user action */
   pendingInputType?: PendingInputType;

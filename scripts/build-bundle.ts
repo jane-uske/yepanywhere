@@ -25,8 +25,9 @@ const SHARED_DIST = path.join(ROOT_DIR, "packages/shared/dist");
 // Staging directory for npm publishing (keeps workspace package.json intact)
 const STAGING_DIR = path.join(ROOT_DIR, "dist/npm-package");
 
-// Version for npm package - set via NPM_VERSION env var (from git tag in CI) or fallback
-const NPM_VERSION = process.env.NPM_VERSION || "0.4.8";
+// Version for npm package - set via NPM_VERSION env var (from git tag in CI) or
+// fallback to the root package version for local release verification.
+const NPM_VERSION = process.env.NPM_VERSION || readRootPackageVersion();
 
 interface StepResult {
   step: string;
@@ -42,6 +43,16 @@ function log(message: string): void {
 
 function error(message: string): void {
   console.error(`[build-bundle] ERROR: ${message}`);
+}
+
+function readRootPackageVersion(): string {
+  const packageJson = JSON.parse(
+    fs.readFileSync(path.join(ROOT_DIR, "package.json"), "utf-8"),
+  ) as { version?: unknown };
+  if (typeof packageJson.version !== "string" || !packageJson.version) {
+    throw new Error("Root package.json is missing a valid version");
+  }
+  return packageJson.version;
 }
 
 function execStep(command: string, cwd?: string): void {

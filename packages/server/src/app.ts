@@ -53,6 +53,7 @@ import { createProcessesRoutes } from "./routes/processes.js";
 import { createProjectsRoutes } from "./routes/projects.js";
 import { createProvidersRoutes } from "./routes/providers.js";
 import { createRecentsRoutes } from "./routes/recents.js";
+import { createRemiWorkRoutes } from "./routes/remi-work.js";
 import { createServerAdminRoutes } from "./routes/server-admin.js";
 import { createServerInfoRoutes } from "./routes/server-info.js";
 import { createSessionsRoutes } from "./routes/sessions.js";
@@ -86,6 +87,7 @@ import { Supervisor } from "./supervisor/Supervisor.js";
 import type { Project } from "./supervisor/types.js";
 import type { EventBus } from "./watcher/index.js";
 import { LifecycleWebhookService } from "./webhooks/LifecycleWebhookService.js";
+import { createWorkSnapshotProvider } from "./work/workSnapshot.js";
 
 export interface AppOptions {
   /** Legacy SDK interface for mock SDK (for testing) */
@@ -600,6 +602,7 @@ export function createApp(options: AppOptions): AppResult {
       scanner,
       readerFactory,
       supervisor,
+      externalTracker,
       notificationService: options.notificationService,
       sessionIndexService: options.sessionIndexService,
       sessionMetadataService: options.sessionMetadataService,
@@ -630,6 +633,25 @@ export function createApp(options: AppOptions): AppResult {
       geminiSessionsDir: GEMINI_TMP_DIR,
       geminiReaderFactory,
       eventBus: options.eventBus,
+    }),
+  );
+
+  app.route(
+    "/api/remi",
+    createRemiWorkRoutes({
+      provider: createWorkSnapshotProvider({
+        scanner,
+        readerFactory,
+        supervisor,
+        sessionIndexService: options.sessionIndexService,
+        sessionMetadataService: options.sessionMetadataService,
+        codexScanner,
+        codexSessionsDir: CODEX_SESSIONS_DIR,
+        codexReaderFactory,
+        geminiScanner,
+        geminiSessionsDir: GEMINI_TMP_DIR,
+        geminiReaderFactory,
+      }),
     }),
   );
 

@@ -15,6 +15,7 @@ import type { Stats } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import {
+  type AgentActivity,
   type CodexEventMsgEntry,
   type CodexFunctionCallOutputPayload,
   type CodexFunctionCallPayload,
@@ -525,6 +526,7 @@ export class CodexSessionReader implements ISessionReader {
     const provider = this.determineProvider(metaEntry, model);
     const turnContext = this.extractTurnContext(entries);
     const contextUsage = this.extractContextUsage(entries, model, provider);
+    const activity = this.extractActivity(entries);
 
     // Skip sessions with no actual conversation messages
     if (messageCount === 0) return null;
@@ -537,7 +539,9 @@ export class CodexSessionReader implements ISessionReader {
       createdAt: metaEntry.payload.timestamp,
       updatedAt: stats.mtime.toISOString(),
       messageCount,
-      ownership: { owner: "none" },
+      ownership:
+        activity === "in-turn" ? { owner: "external" } : { owner: "none" },
+      activity,
       contextUsage,
       provider,
       model,
@@ -722,6 +726,81 @@ export class CodexSessionReader implements ISessionReader {
       }
     }
     return count;
+  }
+
+  private extractActivity(
+    entries: CodexSessionEntry[],
+  ): AgentActivity | undefined {
+    const openTurns = new Set<string>();
+    const pendingCalls = new Set<string>();
+    let sawTaskStarted = false;
+
+    for (const entry of entries) {
+      const payload = entry.payload as {
+        type?: string;
+        turn_id?: string;
+        call_id?: string;
+        id?: string;
+        status?: string;
+      };
+
+      if (entry.type === "event_msg") {
+        if (payload.type === "task_started") {
+          sawTaskStarted = true;
+          openTurns.add(payload.turn_id ?? "__unknown_turn__");
+        } else if (
+          payload.type === "task_complete" ||
+          payload.type === "turn_aborted"
+        ) {
+          if ("turn_id" in payload && payload.turn_id) {
+            openTurns.delete(payload.turn_id);
+          } else {
+            openTurns.clear();
+          }
+          pendingCalls.clear();
+        }
+        continue;
+      }
+
+      if (entry.type !== "response_item") continue;
+
+      if (
+        payload.type === "function_call" ||
+        payload.type === "custom_tool_call" ||
+        payload.type === "web_search_call"
+      ) {
+        const callId =
+          "call_id" in payload && typeof payload.call_id === "string"
+            ? payload.call_id
+            : "id" in payload && typeof payload.id === "string"
+              ? payload.id
+              : undefined;
+        const status =
+          "status" in payload && typeof payload.status === "string"
+            ? payload.status
+            : undefined;
+        if (callId && status !== "completed") {
+          pendingCalls.add(callId);
+        }
+      } else if (
+        payload.type === "function_call_output" ||
+        payload.type === "custom_tool_call_output"
+      ) {
+        const callId =
+          "call_id" in payload && typeof payload.call_id === "string"
+            ? payload.call_id
+            : undefined;
+        if (callId) pendingCalls.delete(callId);
+      }
+    }
+
+    if (openTurns.size > 0 || pendingCalls.size > 0) {
+      return "in-turn";
+    }
+    if (sawTaskStarted) {
+      return "idle";
+    }
+    return undefined;
   }
 
   /**

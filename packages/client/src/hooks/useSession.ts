@@ -40,6 +40,15 @@ export type { AgentContent, AgentContentMap } from "./useSessionMessages";
 
 const THROTTLE_MS = 500;
 
+function isProcessState(activity: unknown): activity is ProcessState {
+  return (
+    activity === "idle" ||
+    activity === "in-turn" ||
+    activity === "waiting-input" ||
+    activity === "hold"
+  );
+}
+
 // Re-export StreamingMarkdownCallbacks for consumers
 export type { StreamingMarkdownCallbacks } from "./useStreamingContent";
 
@@ -200,6 +209,9 @@ export function useSession(
           result.status.permissionMode,
           result.status.modeVersion,
         );
+      }
+      if (isProcessState(result.activity)) {
+        setProcessState(result.activity);
       }
       // Set pending input request from API response immediately
       // This fixes race condition where stream connection is delayed but tool approval is pending
@@ -566,7 +578,9 @@ export function useSession(
     if (result.slashCommands?.length) {
       setSlashCommands(result.slashCommands.map((c) => c.name));
     }
-    if (result.status.owner === "none") {
+    if (isProcessState(result.activity)) {
+      setProcessState(result.activity);
+    } else if (result.status.owner === "none") {
       setProcessState("idle");
     }
 

@@ -5,8 +5,7 @@
  * without requiring actual Gemini CLI installation.
  */
 
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -48,15 +47,11 @@ describe("GeminiProvider", () => {
       expect(typeof status.enabled).toBe("boolean");
     });
 
-    it("should return authenticated=false if oauth_creds.json does not exist", async () => {
-      // This test relies on the auth file not existing in the test environment
-      const credsPath = join(homedir(), ".gemini", "oauth_creds.json");
-      if (!existsSync(credsPath)) {
-        const status = await provider.getAuthStatus();
-        // If CLI is not installed, everything should be false
-        // If CLI is installed but no auth, installed=true but auth=false
-        expect(status.authenticated).toBe(false);
-      }
+    it("should mirror installed status because the Gemini CLI owns auth", async () => {
+      const status = await provider.getAuthStatus();
+
+      expect(status.authenticated).toBe(status.installed);
+      expect(status.enabled).toBe(status.installed);
     });
   });
 

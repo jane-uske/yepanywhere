@@ -172,6 +172,14 @@ export class PushNotifier {
     if (request.type === "tool-approval") {
       const toolName = request.toolName ?? "Unknown tool";
 
+      if (toolName === "ExitPlanMode") {
+        return "Plan is ready for review";
+      }
+
+      if (toolName === "AskUserQuestion") {
+        return this.truncateSummary(request.prompt ?? "Agent needs your input");
+      }
+
       // For file operations, try to extract the file path
       if (request.toolInput && typeof request.toolInput === "object") {
         const input = request.toolInput as Record<string, unknown>;
@@ -187,11 +195,14 @@ export class PushNotifier {
     }
 
     // For questions/choices, use the prompt text (truncated)
-    const prompt = request.prompt ?? "Waiting for input";
-    if (prompt.length > 60) {
-      return `${prompt.slice(0, 57)}...`;
+    return this.truncateSummary(request.prompt ?? "Waiting for input");
+  }
+
+  private truncateSummary(summary: string): string {
+    if (summary.length > 60) {
+      return `${summary.slice(0, 57)}...`;
     }
-    return prompt;
+    return summary;
   }
 
   /**

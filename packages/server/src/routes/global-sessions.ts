@@ -335,7 +335,7 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
 
         // Get agent activity
         let pendingInputType: PendingInputType | undefined;
-        let activity: AgentActivity | undefined;
+        let activity: AgentActivity | undefined = session.activity;
         if (process) {
           const pendingRequest = process.getPendingInputRequest();
           if (pendingRequest) {
@@ -348,6 +348,8 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
           if (state === "in-turn" || state === "waiting-input") {
             activity = state;
           }
+        } else if (isExternal) {
+          activity = deps.externalTracker?.getExternalActivity?.(session.id);
         }
 
         // Apply search filter

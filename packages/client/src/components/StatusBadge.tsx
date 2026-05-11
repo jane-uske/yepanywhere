@@ -49,7 +49,6 @@ export function NotificationBadge({ variant, label }: NotificationBadgeProps) {
 /**
  * Status badge for a single session in a list.
  * Priority: needs-input (blue) > in-turn (pulsing) > unread (orange) > active (outline) > idle (nothing)
- * External sessions always show "External" badge regardless of other state.
  */
 export function SessionStatusBadge({
   status,
@@ -57,12 +56,6 @@ export function SessionStatusBadge({
   hasUnread,
   activity,
 }: SessionStatusBadgeProps) {
-  // External sessions always show the external badge
-  // We can't track fine-grained state (in-turn, needs input) for external sessions
-  if (status.owner === "external") {
-    return <span className="status-badge status-external">External</span>;
-  }
-
   // Priority 1: Needs input (tool approval or user question)
   if (pendingInputType) {
     const label =
@@ -73,6 +66,10 @@ export function SessionStatusBadge({
   // Priority 2: In-turn (agent is thinking) - show pulsing indicator
   if (activity === "in-turn") {
     return <ThinkingIndicator variant="pill" />;
+  }
+
+  if (status.owner === "external") {
+    return <span className="status-badge status-external">External</span>;
   }
 
   // Unread content is now handled via CSS class on session list item

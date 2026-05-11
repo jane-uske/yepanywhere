@@ -541,3 +541,125 @@ describe("CodexProvider Configuration", () => {
     expect(provider.displayName).toBe("Codex");
   });
 });
+
+describe("CodexProvider User Input Requests", () => {
+  it("routes Codex tool user-input requests through the approval callback", async () => {
+    const provider = new CodexProvider() as unknown as {
+      resolveToolUserInput: (
+        options: {
+          onToolApproval: (
+            toolName: string,
+            input: unknown,
+            options: { signal: AbortSignal },
+          ) => Promise<{
+            behavior: "allow" | "deny";
+            updatedInput?: unknown;
+          }>;
+        },
+        requestInput: unknown,
+        signal: AbortSignal,
+      ) => Promise<{ answers: Record<string, { answers: string[] }> }>;
+    };
+
+    const onToolApproval = vi.fn(async (_toolName, input: unknown) => ({
+      behavior: "allow" as const,
+      updatedInput: {
+        ...(input as Record<string, unknown>),
+        answers: {
+          "Pick one": "Option A",
+          q2: "typed answer",
+        },
+      },
+    }));
+
+    const response = await provider.resolveToolUserInput(
+      { onToolApproval },
+      {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        questions: [
+          {
+            id: "q1",
+            header: "Choice",
+            question: "Pick one",
+            isOther: false,
+            isSecret: false,
+            options: [{ label: "Option A", description: "First option" }],
+          },
+          {
+            id: "q2",
+            header: "Other",
+            question: "Explain",
+            isOther: true,
+            isSecret: false,
+            options: null,
+          },
+        ],
+      },
+      new AbortController().signal,
+    );
+
+    expect(onToolApproval).toHaveBeenCalledWith(
+      "AskUserQuestion",
+      expect.objectContaining({
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        questions: [
+          expect.objectContaining({
+            id: "q1",
+            question: "Pick one",
+            options: [{ label: "Option A", description: "First option" }],
+          }),
+          expect.objectContaining({
+            id: "q2",
+            question: "Explain",
+            options: [],
+          }),
+        ],
+      }),
+      expect.any(Object),
+    );
+    expect(response).toEqual({
+      answers: {
+        q1: { answers: ["Option A"] },
+        q2: { answers: ["typed answer"] },
+      },
+    });
+  });
+
+  it("returns no answers when Codex user input is denied", async () => {
+    const provider = new CodexProvider() as unknown as {
+      resolveToolUserInput: (
+        options: {
+          onToolApproval: () => Promise<{ behavior: "allow" | "deny" }>;
+        },
+        requestInput: unknown,
+        signal: AbortSignal,
+      ) => Promise<{ answers: Record<string, { answers: string[] }> }>;
+    };
+
+    const response = await provider.resolveToolUserInput(
+      { onToolApproval: vi.fn(async () => ({ behavior: "deny" as const })) },
+      {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        itemId: "item-1",
+        questions: [
+          {
+            id: "q1",
+            header: "Choice",
+            question: "Pick one",
+            isOther: false,
+            isSecret: false,
+            options: [{ label: "Option A", description: "" }],
+          },
+        ],
+      },
+      new AbortController().signal,
+    );
+
+    expect(response).toEqual({ answers: {} });
+  });
+});

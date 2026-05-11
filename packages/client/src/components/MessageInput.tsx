@@ -132,6 +132,7 @@ export function MessageInput({
 
   // Panel is collapsed if user collapsed it OR if externally collapsed (approval panel showing)
   const collapsed = userCollapsed || externalCollapsed;
+  const textareaRows = collapsed || hasCoarsePointer() ? 1 : 3;
 
   const canAttach = !!(projectId && sessionId && onAttach);
 
@@ -369,7 +370,7 @@ export function MessageInput({
             externalCollapsed ? t("messageInputContinueAbove") : placeholder
           }
           disabled={disabled}
-          rows={collapsed ? 1 : 3}
+          rows={textareaRows}
         />
 
         {/* Attachment chips - show below textarea when not collapsed */}

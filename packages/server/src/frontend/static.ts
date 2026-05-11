@@ -6,13 +6,18 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 
 export interface StaticServeOptions {
   /** Path to the built client dist directory */
   distPath: string;
   /** Optional base path prefix to strip from requests (e.g., "/_stable") */
   basePath?: string;
+  /**
+   * Optional predicate for conditional static serving.
+   * Return false to let later routes handle the request.
+   */
+  shouldServeRequest?: (c: Context) => boolean;
 }
 
 /**
@@ -23,7 +28,7 @@ export interface StaticServeOptions {
  * - index.html for all other routes (SPA fallback)
  */
 export function createStaticRoutes(options: StaticServeOptions): Hono {
-  const { distPath, basePath } = options;
+  const { distPath, basePath, shouldServeRequest } = options;
   const app = new Hono();
 
   // Check if dist directory exists
@@ -37,7 +42,11 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
   const indexPath = path.join(distPath, "index.html");
 
   // Serve static files
-  app.get("*", async (c) => {
+  app.on(["GET", "HEAD"], "*", async (c, next) => {
+    if (shouldServeRequest && !shouldServeRequest(c)) {
+      return next();
+    }
+
     let reqPath = c.req.path;
 
     // Strip base path prefix if configured (e.g., "/_stable" -> "")
@@ -115,6 +124,55 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
 }
 
 /**
+ * In dev mode, non-local browser hosts are usually mobile/LAN/tunnel access.
+ * Serving the built Vite output there avoids the slow Vite ESM module waterfall
+ * over high-latency tunnels while localhost keeps HMR.
+ */
+export function shouldServeDevStaticFrontend(
+  hostHeader: string | undefined,
+  env: Record<string, string | undefined> = process.env,
+): boolean {
+  if (
+    env.DEV_REMOTE_STATIC_FRONTEND === "false" ||
+    env.REMOTE_STATIC_FRONTEND === "false"
+  ) {
+    return false;
+  }
+
+  const hostname = extractHostname(hostHeader);
+  if (!hostname) return false;
+  return !isLocalDevHostname(hostname);
+}
+
+function extractHostname(hostHeader: string | undefined): string | null {
+  const value = hostHeader?.trim().toLowerCase();
+  if (!value) return null;
+
+  if (value.startsWith("[")) {
+    const closeBracket = value.indexOf("]");
+    if (closeBracket === -1) return value;
+    return value.slice(1, closeBracket);
+  }
+
+  const firstColon = value.indexOf(":");
+  const lastColon = value.lastIndexOf(":");
+  if (firstColon !== -1 && firstColon === lastColon) {
+    return value.slice(0, firstColon);
+  }
+
+  return value;
+}
+
+function isLocalDevHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "0.0.0.0"
+  );
+}
+
+/**
  * Get content type for a file extension.
  */
 function getContentType(ext: string): string {
@@ -145,6 +203,6 @@ function getContentType(ext: string): string {
  * Vite adds hashes to filenames like: index-abc123.js
  */
 function isHashedAsset(reqPath: string): boolean {
-  // Match patterns like: /assets/index-abc123.js or /assets/style-xyz789.css
-  return /\/assets\/[^/]+-[a-f0-9]+\.[a-z]+$/i.test(reqPath);
+  // Match Vite hashed assets like /assets/index-D2n323UU.js.
+  return /\/assets\/[^/]+-[A-Za-z0-9_-]+\.[a-z]+$/i.test(reqPath);
 }

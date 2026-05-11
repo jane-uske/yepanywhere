@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.29] - 2026-05-12
+
+### Added
+- Add Remi work snapshot API types and route for summarizing active work signals.
+- Add custom Codex slash command entries for the message input.
+
+### Changed
+- Improve remote session loading with session view caching and tail-based session detail reads.
+- Serve built static frontend assets for non-local dev hosts to reduce mobile and tunnel loading overhead.
+- Refresh app and site icons plus status and processing UI styling.
+
+### Fixed
+- Route Codex user-input requests through the approval/input flow instead of returning empty answers.
+- Improve Codex session activity detection for externally running turns.
+- Improve push notification summaries for plan review and user-question requests.
+- Align Gemini provider auth-status tests with the current CLI-owned auth model.
+
 ## [0.4.28] - 2026-04-16
 
 ### Changed

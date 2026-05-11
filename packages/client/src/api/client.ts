@@ -389,6 +389,7 @@ export const api = {
       session: Session;
       messages: Message[];
       ownership: SessionStatus;
+      activity?: AgentActivity;
       pendingInputRequest?: InputRequest | null;
       slashCommands?: SlashCommand[] | null;
       pagination?: PaginationInfo;
@@ -403,6 +404,7 @@ export const api = {
     fetchJSON<{
       session: Session;
       ownership: SessionStatus;
+      activity?: AgentActivity;
       pendingInputRequest?: InputRequest | null;
       slashCommands?: SlashCommand[] | null;
     }>(`/projects/${projectId}/sessions/${sessionId}/metadata`),

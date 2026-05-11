@@ -125,7 +125,8 @@ export function NewSessionForm({
   const hasInitializedDefaultsRef = useRef(false);
 
   // Thinking toggle state
-  const { thinkingMode, cycleThinkingMode, thinkingLevel } = useModelSettings();
+  const { thinkingMode, cycleThinkingMode, thinkingLevel, setThinkingSetting } =
+    useModelSettings();
 
   // Connection for uploads (uses WebSocket when enabled)
   const connection = useConnection();
@@ -204,10 +205,14 @@ export function NewSessionForm({
       getPreferredModelId(initialProvider.models ?? [], savedDefaults?.model),
     );
     setMode(savedDefaults?.permissionMode ?? "default");
+    if (savedDefaults?.thinking) {
+      setThinkingSetting(savedDefaults.thinking);
+    }
   }, [
     availableProviders,
     providers,
     providersLoading,
+    setThinkingSetting,
     settings,
     settingsLoading,
   ]);
@@ -325,6 +330,7 @@ export function NewSessionForm({
         provider: selectedProvider ?? undefined,
         model: selectedModel ?? undefined,
         permissionMode: mode,
+        thinking: getThinkingSetting(),
       });
       showToast(t("newSessionDefaultsSaved"), "success");
     } catch (err) {

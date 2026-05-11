@@ -304,6 +304,53 @@ describe("PushNotifier", () => {
       expect(payload.summary).toBe("Run: Bash");
     });
 
+    it("should build a clear plan review summary for ExitPlanMode approvals", async () => {
+      const mockProcess = {
+        state: {
+          type: "waiting-input",
+          request: {
+            id: "req-1",
+            sessionId: "session-1",
+            type: "tool-approval",
+            prompt: "Allow ExitPlanMode?",
+            toolName: "ExitPlanMode",
+            toolInput: { plan: "1. Inspect\n2. Implement" },
+            timestamp: new Date().toISOString(),
+          } as InputRequest,
+        } as ProcessState,
+      };
+
+      vi.mocked(mockSupervisor.getProcessForSession).mockReturnValue(
+        mockProcess as unknown as ReturnType<
+          Supervisor["getProcessForSession"]
+        >,
+      );
+
+      new PushNotifier({
+        eventBus: mockEventBus,
+        pushService: mockPushService,
+        supervisor: mockSupervisor,
+      });
+
+      const event: ProcessStateEvent = {
+        type: "process-state-changed",
+        sessionId: "session-1",
+        projectId: testProjectId,
+        activity: "waiting-input",
+        timestamp: new Date().toISOString(),
+      };
+
+      eventHandler?.(event);
+
+      await vi.waitFor(() => {
+        expect(mockPushService.sendToAll).toHaveBeenCalled();
+      });
+
+      const payload = vi.mocked(mockPushService.sendToAll).mock.calls[0][0];
+      expect(payload.inputType).toBe("tool-approval");
+      expect(payload.summary).toBe("Plan is ready for review");
+    });
+
     it("should truncate long question prompts", async () => {
       const longPrompt =
         "This is a very long question that exceeds the maximum length we want to show in a push notification summary";

@@ -1,4 +1,5 @@
 import {
+  type AgentActivity,
   type ContextUsage,
   type ModelOption,
   type PermissionRules,
@@ -87,6 +88,22 @@ function parseOptionalExecutor(rawExecutor: unknown): {
   }
 
   return { executor };
+}
+
+function getProcessActivity(
+  process: Process | null | undefined,
+): AgentActivity | undefined {
+  const state = process?.state.type;
+  if (
+    state === "in-turn" ||
+    state === "waiting-input" ||
+    state === "idle" ||
+    state === "hold" ||
+    state === "terminated"
+  ) {
+    return state;
+  }
+  return undefined;
 }
 
 function isCodexProviderName(
@@ -431,8 +448,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     // Check if session is being controlled by an external program
     const isExternal = deps.externalTracker?.isExternal(sessionId) ?? false;
 
-    // Determine the session ownership
-    const ownership = process
+    const processOwnership = process
       ? {
           owner: "self" as const,
           processId: process.id,
@@ -440,9 +456,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
           modeVersion: process.modeVersion,
           state: process.state.type,
         }
-      : isExternal
-        ? { owner: "external" as const }
-        : { owner: "none" as const };
+      : null;
 
     // Get session metadata (custom title, archived, starred)
     const metadata = deps.sessionMetadataService?.getMetadata(sessionId);
@@ -484,6 +498,20 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
       return c.json({ error: "Session not found" }, 404);
     }
 
+    // Determine the session ownership after reading metadata so Codex sessions
+    // that were already active before this server started can surface their
+    // persisted in-turn state.
+    const ownership = processOwnership
+      ? processOwnership
+      : isExternal
+        ? { owner: "external" as const }
+        : (sessionSummary?.ownership ?? { owner: "none" as const });
+    const activity = process
+      ? getProcessActivity(process)
+      : isExternal
+        ? deps.externalTracker?.getExternalActivity?.(sessionId)
+        : sessionSummary?.activity;
+
     // Calculate hasUnread if we have session summary
     const hasUnread =
       deps.notificationService && sessionSummary
@@ -519,8 +547,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         isStarred: metadata?.isStarred,
         lastSeenAt,
         hasUnread,
+        activity,
       },
       ownership,
+      activity,
       pendingInputRequest,
       slashCommands,
     });
@@ -652,6 +682,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
       : isExternal
         ? { owner: "external" as const }
         : (session?.ownership ?? { owner: "none" as const });
+    const activity = process
+      ? getProcessActivity(process)
+      : isExternal
+        ? deps.externalTracker?.getExternalActivity?.(sessionId)
+        : session?.activity;
 
     // Get pending input request from active process (for tool approval prompts)
     // This ensures clients get pending requests immediately without waiting for SSE
@@ -720,9 +755,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
             provider: process.provider,
             model: process.resolvedModel,
             contextUsage,
+            activity,
           },
           messages: processMessages,
           ownership,
+          activity,
           pendingInputRequest,
           slashCommands,
         });
@@ -801,9 +838,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model: session.model,
         lastSeenAt,
         hasUnread,
+        activity,
       },
       messages: session.messages,
       ownership,
+      activity,
       pendingInputRequest,
       slashCommands,
       ...(paginationInfo && { pagination: paginationInfo }),
