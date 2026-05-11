@@ -4,9 +4,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { UrlProjectId } from "@yep-anywhere/shared";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeProjectId } from "../../src/projects/paths.js";
 import { CodexSessionReader } from "../../src/sessions/codex-reader.js";
+import * as jsonlUtils from "../../src/utils/jsonl.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -331,5 +332,241 @@ describe("CodexSessionReader - OSS Support", () => {
       "test-project" as UrlProjectId,
     );
     expect(summary?.originator).toBe("yep-anywhere");
+  });
+
+  it("uses Codex session_index thread_name as the session title", async () => {
+    const sessionId = "indexed-title-session";
+    const sessionIndexPath = join(testDir, "session_index.jsonl");
+    reader = new CodexSessionReader({
+      sessionsDir: testDir,
+      sessionIndexPath,
+    });
+    await createSessionFile(sessionId, "openai", "gpt-5.3-codex");
+    await writeFile(
+      sessionIndexPath,
+      `${JSON.stringify({
+        id: sessionId,
+        thread_name: "优化会话切换加载",
+        updated_at: new Date().toISOString(),
+      })}\n`,
+    );
+
+    const summary = await reader.getSessionSummary(
+      sessionId,
+      "test-project" as UrlProjectId,
+    );
+
+    expect(summary?.title).toBe("优化会话切换加载");
+    expect(summary?.fullTitle).toBe("优化会话切换加载");
+  });
+
+  it("refreshes cached summaries when Codex session_index changes", async () => {
+    const sessionId = "indexed-title-refresh";
+    const sessionIndexPath = join(testDir, "session_index.jsonl");
+    reader = new CodexSessionReader({
+      sessionsDir: testDir,
+      sessionIndexPath,
+    });
+    await createSessionFile(sessionId, "openai", "gpt-5.3-codex");
+    await writeFile(
+      sessionIndexPath,
+      `${JSON.stringify({
+        id: sessionId,
+        thread_name: "Old title",
+        updated_at: new Date().toISOString(),
+      })}\n`,
+    );
+
+    const firstSummary = await reader.getSessionSummary(
+      sessionId,
+      "test-project" as UrlProjectId,
+    );
+    expect(firstSummary?.title).toBe("Old title");
+
+    await writeFile(
+      sessionIndexPath,
+      `${JSON.stringify({
+        id: sessionId,
+        thread_name: "Updated Codex generated title",
+        updated_at: new Date().toISOString(),
+      })}\n`,
+    );
+
+    const secondSummary = await reader.getSessionSummary(
+      sessionId,
+      "test-project" as UrlProjectId,
+    );
+    expect(secondSummary?.title).toBe("Updated Codex generated title");
+  });
+
+  it("returns only the compacted tail for tailCompactions detail loads", async () => {
+    const sessionId = "tail-compactions-detail";
+    const now = new Date().toISOString();
+    const lines = [
+      JSON.stringify({
+        type: "session_meta",
+        timestamp: now,
+        payload: {
+          id: sessionId,
+          cwd: "/test/project",
+          timestamp: now,
+          model_provider: "ollama",
+        },
+      }),
+      JSON.stringify({
+        type: "turn_context",
+        timestamp: now,
+        payload: {
+          cwd: "/test/project",
+          approval_policy: "never",
+          model: "qwen3-coder",
+        },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "old user message",
+        },
+      }),
+      JSON.stringify({
+        type: "compacted",
+        timestamp: now,
+        payload: { message: "first compaction" },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "middle user message",
+        },
+      }),
+      JSON.stringify({
+        type: "compacted",
+        timestamp: now,
+        payload: { message: "second compaction" },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "tail user message",
+        },
+      }),
+    ];
+
+    await writeFile(
+      join(testDir, `${sessionId}.jsonl`),
+      `${lines.join("\n")}\n`,
+    );
+
+    const loaded = await reader.getSession(
+      sessionId,
+      "test-project" as UrlProjectId,
+      undefined,
+      { tailCompactions: 1 } as never,
+    );
+
+    expect(loaded?.data.provider).toBe("codex-oss");
+    expect(loaded?.data.session.entries.map((entry) => entry.type)).toEqual([
+      "compacted",
+      "event_msg",
+    ]);
+    expect(loaded?.pagination).toMatchObject({
+      hasOlderMessages: true,
+      totalMessageCount: 3,
+      returnedMessageCount: 1,
+      totalCompactions: 2,
+    });
+  });
+
+  it("does not full-read a cached-summary session for tailCompactions detail loads", async () => {
+    const sessionId = "tail-compactions-no-detail-full-read";
+    const now = new Date().toISOString();
+    const lines = [
+      JSON.stringify({
+        type: "session_meta",
+        timestamp: now,
+        payload: {
+          id: sessionId,
+          cwd: "/test/project",
+          timestamp: now,
+          model_provider: "ollama",
+        },
+      }),
+      JSON.stringify({
+        type: "turn_context",
+        timestamp: now,
+        payload: {
+          cwd: "/test/project",
+          approval_policy: "never",
+          model: "qwen3-coder",
+        },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "old user message",
+        },
+      }),
+      JSON.stringify({
+        type: "compacted",
+        timestamp: now,
+        payload: { message: "first compaction" },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "middle user message",
+        },
+      }),
+      JSON.stringify({
+        type: "compacted",
+        timestamp: now,
+        payload: { message: "second compaction" },
+      }),
+      JSON.stringify({
+        type: "event_msg",
+        timestamp: now,
+        payload: {
+          type: "user_message",
+          message: "tail user message",
+        },
+      }),
+    ];
+
+    await writeFile(
+      join(testDir, `${sessionId}.jsonl`),
+      `${lines.join("\n")}\n`,
+    );
+
+    await reader.getSessionSummary(sessionId, "test-project" as UrlProjectId);
+
+    const fullReadSpy = vi.spyOn(jsonlUtils, "readJsonlLines");
+    const tailReadSpy = vi.spyOn(jsonlUtils, "readJsonlTailLines");
+
+    const loaded = await reader.getSession(
+      sessionId,
+      "test-project" as UrlProjectId,
+      undefined,
+      { tailCompactions: 1 } as never,
+    );
+
+    expect(loaded?.data.session.entries.map((entry) => entry.type)).toEqual([
+      "compacted",
+      "event_msg",
+    ]);
+    expect(tailReadSpy).toHaveBeenCalledTimes(1);
+    expect(fullReadSpy).not.toHaveBeenCalled();
+
+    fullReadSpy.mockRestore();
+    tailReadSpy.mockRestore();
   });
 });

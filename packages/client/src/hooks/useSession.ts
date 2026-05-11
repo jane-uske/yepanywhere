@@ -301,6 +301,9 @@ export function useSession(
     timer: ReturnType<typeof setTimeout> | null;
     pending: boolean;
   }>({ timer: null, pending: false });
+  const activityRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Add a message to the pending queue
   // Generates a tempId that will be sent to the server and echoed back in stream
@@ -548,24 +551,45 @@ export function useSession(
     [projectId, sessionId],
   );
 
-  // Handle activity bus reconnection (e.g., after phone screen wake).
-  // Catches up on messages and ownership changes that occurred while disconnected.
-  // Without this, a session that completed while the screen was off would show stale
-  // data because the session stream unsubscribes when ownership becomes "none" and
-  // nobody triggers fetchNewMessages().
-  const handleActivityReconnect = useCallback(async () => {
-    fetchNewMessages();
-    try {
-      const data = await api.getSessionMetadata(projectId, sessionId);
-      setStatus(data.ownership);
-      if (data.ownership.owner === "none") {
-        setProcessState("idle");
-        setPendingInputRequest(null);
-      }
-    } catch {
-      // Silent fail - non-critical
+  const runActivityReconnectRefresh = useCallback(async () => {
+    const previousUpdatedAt = session?.updatedAt;
+    const previousMessageCount = session?.messageCount;
+    const result = await fetchSessionMetadata();
+    if (!result) return;
+
+    setStatus(result.status);
+    if (result.pendingInputRequest) {
+      setPendingInputRequest(result.pendingInputRequest as InputRequest);
+    } else if (result.status.owner === "none") {
+      setPendingInputRequest(null);
     }
-  }, [projectId, sessionId, fetchNewMessages]);
+    if (result.slashCommands?.length) {
+      setSlashCommands(result.slashCommands.map((c) => c.name));
+    }
+    if (result.status.owner === "none") {
+      setProcessState("idle");
+    }
+
+    const changed =
+      !session ||
+      result.session.updatedAt !== previousUpdatedAt ||
+      result.session.messageCount !== previousMessageCount;
+    if (changed) {
+      fetchNewMessages();
+    }
+  }, [session, fetchSessionMetadata, fetchNewMessages]);
+
+  // Handle activity bus reconnection (e.g., after phone screen wake).
+  // Keep the visible cached view in place, then debounce a metadata-first catch-up.
+  const handleActivityReconnect = useCallback(() => {
+    if (activityRefreshTimerRef.current) {
+      clearTimeout(activityRefreshTimerRef.current);
+    }
+    activityRefreshTimerRef.current = setTimeout(() => {
+      activityRefreshTimerRef.current = null;
+      runActivityReconnectRefresh();
+    }, 250);
+  }, [runActivityReconnectRefresh]);
 
   useFileActivity({
     onSessionStatusChange: handleSessionStatusChange,
@@ -601,6 +625,9 @@ export function useSession(
     return () => {
       if (throttleRef.current.timer) {
         clearTimeout(throttleRef.current.timer);
+      }
+      if (activityRefreshTimerRef.current) {
+        clearTimeout(activityRefreshTimerRef.current);
       }
     };
   }, []);

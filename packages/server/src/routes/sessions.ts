@@ -95,6 +95,12 @@ function isCodexProviderName(
   return provider === "codex" || provider === "codex-oss";
 }
 
+function getMessageId(message: Message): string | undefined {
+  return (
+    message.uuid ?? (typeof message.id === "string" ? message.id : undefined)
+  );
+}
+
 export interface SessionsDeps {
   supervisor: Supervisor;
   scanner: ProjectScanner;
@@ -569,6 +575,8 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         // 2. No active process (tools aren't potentially in progress)
         // When we own the session, tools without results might be pending approval
         includeOrphans: wasEverOwned && !process,
+        tailCompactions,
+        beforeMessageId,
       },
     );
 
@@ -592,7 +600,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
           sessionId,
           project.id,
           afterMessageId,
-          { includeOrphans: wasEverOwned && !process },
+          {
+            includeOrphans: wasEverOwned && !process,
+            tailCompactions,
+            beforeMessageId,
+          },
         );
       }
     }
@@ -618,7 +630,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
           sessionId,
           project.id,
           afterMessageId,
-          { includeOrphans: wasEverOwned && !process },
+          {
+            includeOrphans: wasEverOwned && !process,
+            tailCompactions,
+            beforeMessageId,
+          },
         );
       }
     }
@@ -728,7 +744,16 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     // tailCompactions slices to last N compact boundaries; skip when afterMessageId is
     // present since that's a different use case (incremental forward-fetch)
     let paginationInfo: PaginationInfo | undefined;
-    if (
+    if (loadedSession?.pagination && !afterMessageId) {
+      const firstMessage = session.messages[0];
+      paginationInfo = {
+        ...loadedSession.pagination,
+        returnedMessageCount: session.messages.length,
+        truncatedBeforeMessageId: firstMessage
+          ? getMessageId(firstMessage)
+          : undefined,
+      };
+    } else if (
       tailCompactions !== undefined &&
       !Number.isNaN(tailCompactions) &&
       tailCompactions > 0 &&

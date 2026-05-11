@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type GlobalSessionItem,
   type GlobalSessionStats,
   type ProjectOption,
   api,
 } from "../api/client";
+import {
+  type GlobalSessionPatch,
+  getCachedGlobalSessions,
+  patchCachedGlobalSessions,
+  scheduleRecentSessionPrefetch,
+  setCachedGlobalSessions,
+  subscribeToGlobalSessionPatches,
+} from "./sessionViewCache";
 import {
   type ProcessStateEvent,
   type SessionCreatedEvent,
@@ -45,18 +53,97 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     starred,
     includeStats = false,
   } = options;
-  const [sessions, setSessions] = useState<GlobalSessionItem[]>([]);
-  const [stats, setStats] = useState<GlobalSessionStats>(DEFAULT_STATS);
-  const [projects, setProjects] = useState<ProjectOption[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cacheOptions = useMemo(
+    () => ({
+      projectId,
+      searchQuery,
+      limit,
+      includeArchived,
+      starred,
+      includeStats,
+    }),
+    [projectId, searchQuery, limit, includeArchived, starred, includeStats],
+  );
+  const initialCachedRef = useRef(getCachedGlobalSessions(cacheOptions));
+  const initialCached = initialCachedRef.current;
+  const [sessions, setSessions] = useState<GlobalSessionItem[]>(
+    () => initialCached?.sessions ?? [],
+  );
+  const [stats, setStats] = useState<GlobalSessionStats>(
+    () => initialCached?.stats ?? DEFAULT_STATS,
+  );
+  const [projects, setProjects] = useState<ProjectOption[]>(
+    () => initialCached?.projects ?? [],
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
   const [error, setError] = useState<Error | null>(null);
-  const [hasMore, setHasMore] = useState(false);
+  const [hasMore, setHasMore] = useState(() => initialCached?.hasMore ?? false);
   const refetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialLoadRef = useRef(false);
   const sessionsRef = useRef<GlobalSessionItem[]>([]);
   sessionsRef.current = sessions;
   const projectsRef = useRef<ProjectOption[]>([]);
   projectsRef.current = projects;
+
+  const sessionMatchesCurrentFilters = useCallback(
+    (session: GlobalSessionItem): boolean => {
+      if (projectId && session.projectId !== projectId) return false;
+      if (!includeArchived && session.isArchived) return false;
+      if (starred && !session.isStarred) return false;
+
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = session.title?.toLowerCase().includes(q);
+        const customTitleMatch = session.customTitle?.toLowerCase().includes(q);
+        const projectNameMatch = session.projectName.toLowerCase().includes(q);
+        if (!titleMatch && !customTitleMatch && !projectNameMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+    [projectId, includeArchived, starred, searchQuery],
+  );
+
+  const applySessionPatches = useCallback(
+    (patches: GlobalSessionPatch[]) => {
+      const patchById = new Map(patches.map((patch) => [patch.id, patch]));
+      setSessions((prev) => {
+        let changed = false;
+        const next: GlobalSessionItem[] = [];
+
+        for (const session of prev) {
+          const patch = patchById.get(session.id);
+          const merged = patch ? { ...session, ...patch } : session;
+          if (patch) changed = true;
+
+          if (sessionMatchesCurrentFilters(merged)) {
+            next.push(merged);
+          } else {
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    },
+    [sessionMatchesCurrentFilters],
+  );
+
+  useEffect(() => {
+    return subscribeToGlobalSessionPatches(applySessionPatches);
+  }, [applySessionPatches]);
+
+  useEffect(() => {
+    if (!hasInitialLoadRef.current) return;
+    setCachedGlobalSessions(cacheOptions, {
+      sessions,
+      stats,
+      projects,
+      hasMore,
+    });
+  }, [cacheOptions, sessions, stats, projects, hasMore]);
 
   // Track the options used for the last fetch (for loadMore pagination)
   const lastFetchOptionsRef = useRef<{
@@ -73,12 +160,22 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     const optionsChanged =
       lastFetchOptionsRef.current.projectId !== projectId ||
       lastFetchOptionsRef.current.searchQuery !== searchQuery ||
+      lastFetchOptionsRef.current.limit !== limit ||
       lastFetchOptionsRef.current.includeArchived !== includeArchived ||
       lastFetchOptionsRef.current.starred !== starred ||
       lastFetchOptionsRef.current.includeStats !== includeStats;
 
+    const cachedForOptions = getCachedGlobalSessions(cacheOptions);
     if (optionsChanged) {
-      hasInitialLoadRef.current = false;
+      if (cachedForOptions) {
+        setSessions(cachedForOptions.sessions);
+        setStats(cachedForOptions.stats);
+        setProjects(cachedForOptions.projects);
+        setHasMore(cachedForOptions.hasMore);
+        hasInitialLoadRef.current = true;
+      } else {
+        hasInitialLoadRef.current = false;
+      }
     }
 
     lastFetchOptionsRef.current = {
@@ -91,7 +188,10 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     };
 
     // Only show loading state on initial load
-    if (sessionsRef.current.length === 0 || optionsChanged) {
+    if (
+      !cachedForOptions &&
+      (sessionsRef.current.length === 0 || optionsChanged)
+    ) {
       setLoading(true);
     }
     setError(null);
@@ -112,6 +212,9 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
         sessionsPromise,
         statsPromise,
       ]);
+
+      patchCachedGlobalSessions(data.sessions);
+      scheduleRecentSessionPrefetch(data.sessions);
 
       if (!hasInitialLoadRef.current || optionsChanged) {
         setSessions(data.sessions);
@@ -148,7 +251,15 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, [projectId, searchQuery, limit, includeArchived, starred, includeStats]);
+  }, [
+    projectId,
+    searchQuery,
+    limit,
+    includeArchived,
+    starred,
+    includeStats,
+    cacheOptions,
+  ]);
 
   // Load more sessions (pagination)
   const loadMore = useCallback(async () => {
@@ -167,6 +278,8 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
         starred,
         includeStats: false,
       });
+
+      patchCachedGlobalSessions(data.sessions);
 
       setSessions((prev) => {
         // Deduplicate when appending
