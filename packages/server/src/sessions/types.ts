@@ -7,6 +7,7 @@
 
 import type { UnifiedSession, UrlProjectId } from "@yep-anywhere/shared";
 import type { Message, Session, SessionSummary } from "../supervisor/types.js";
+import type { PaginationInfo } from "./pagination.js";
 
 /**
  * Options for reading a session.
@@ -14,12 +15,17 @@ import type { Message, Session, SessionSummary } from "../supervisor/types.js";
 export interface GetSessionOptions {
   /** Include orphaned tool use detection (default: true, only applicable for Claude) */
   includeOrphans?: boolean;
+  /** Return only the last N compaction chunks when supported by the provider. */
+  tailCompactions?: number;
+  /** Cursor for loading older compacted chunks. */
+  beforeMessageId?: string;
 }
 
 // Return type that includes both the computed summary and the raw provider data
 export interface LoadedSession {
   summary: SessionSummary;
   data: UnifiedSession;
+  pagination?: PaginationInfo;
 }
 
 /**
@@ -72,6 +78,13 @@ export interface ISessionReader {
     cachedMtime: number,
     cachedSize: number,
   ): Promise<{ summary: SessionSummary; mtime: number; size: number } | null>;
+
+  /**
+   * Optional extra cache token for summary fields that come from files outside
+   * the primary session file, such as Codex's session_index.jsonl thread names.
+   * Return undefined by omitting the method when unsupported.
+   */
+  getSummaryCacheToken?(sessionId: string): Promise<string | null>;
 
   /**
    * Get mappings from tool use IDs to agent session IDs.

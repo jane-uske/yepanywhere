@@ -12,6 +12,13 @@ import {
 } from "../lib/mergeMessages";
 import { getProvider } from "../providers/registry";
 import type { Message, Session, SessionStatus } from "../types";
+import {
+  getCachedSessionDetail,
+  getInFlightSessionDetailLoad,
+  prioritizeSessionDetailLoad,
+  setCachedSessionDetail,
+  setInFlightSessionDetailLoad,
+} from "./sessionViewCache";
 
 /** Content from a subagent (Task tool) */
 export interface AgentContent {
@@ -38,6 +45,12 @@ export interface SessionLoadResult {
     argumentHint?: string;
   }> | null;
 }
+
+export type SessionMetadataResult = SessionLoadResult | null;
+
+type InitialSessionLoadData = Awaited<ReturnType<typeof api.getSession>> & {
+  lastMessageId?: string;
+};
 
 /** Options for useSessionMessages */
 export interface UseSessionMessagesOptions {
@@ -80,7 +93,7 @@ export interface UseSessionMessagesResult {
   /** Fetch new messages incrementally (for file change events) */
   fetchNewMessages: () => Promise<void>;
   /** Fetch session metadata only */
-  fetchSessionMetadata: () => Promise<void>;
+  fetchSessionMetadata: () => Promise<SessionMetadataResult>;
   /** Pagination info from compact-boundary-based loading */
   pagination: PaginationInfo | undefined;
   /** Whether older messages are being loaded */
@@ -143,6 +156,11 @@ function isEmptyAssistantContent(message: Message): boolean {
   });
 }
 
+function getLastCachedMessageId(messages: Message[]): string | undefined {
+  const lastMessage = messages[messages.length - 1];
+  return lastMessage ? getMessageId(lastMessage) : undefined;
+}
+
 /**
  * Hook for managing session messages with stream buffering.
  *
@@ -156,16 +174,26 @@ export function useSessionMessages(
   options: UseSessionMessagesOptions,
 ): UseSessionMessagesResult {
   const { projectId, sessionId, onLoadComplete, onLoadError } = options;
+  const initialCachedRef = useRef(getCachedSessionDetail(projectId, sessionId));
+  const initialCached = initialCachedRef.current;
 
   // Core state
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [agentContent, setAgentContent] = useState<AgentContentMap>({});
-  const [toolUseToAgent, setToolUseToAgent] = useState<Map<string, string>>(
-    () => new Map(),
+  const [messages, setMessages] = useState<Message[]>(
+    () => initialCached?.messages ?? [],
   );
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<Session | null>(null);
-  const [pagination, setPagination] = useState<PaginationInfo | undefined>();
+  const [agentContent, setAgentContent] = useState<AgentContentMap>(
+    () => initialCached?.agentContent ?? {},
+  );
+  const [toolUseToAgent, setToolUseToAgent] = useState<Map<string, string>>(
+    () => new Map(initialCached?.toolUseToAgentEntries ?? []),
+  );
+  const [loading, setLoading] = useState(() => !initialCached);
+  const [session, setSession] = useState<Session | null>(
+    () => initialCached?.session ?? null,
+  );
+  const [pagination, setPagination] = useState<PaginationInfo | undefined>(
+    () => initialCached?.pagination,
+  );
   const [loadingOlder, setLoadingOlder] = useState(false);
 
   // Buffering: queue stream messages until initial load completes
@@ -178,10 +206,17 @@ export function useSessionMessages(
   const initialLoadCompleteRef = useRef(false);
 
   // Track provider for DAG ordering decisions
-  const providerRef = useRef<string | undefined>(undefined);
+  const providerRef = useRef<string | undefined>(
+    initialCached?.session.provider,
+  );
 
   // Track last message ID for incremental fetching
-  const lastMessageIdRef = useRef<string | undefined>(undefined);
+  const lastMessageIdRef = useRef<string | undefined>(
+    initialCached?.lastMessageId ??
+      (initialCached
+        ? getLastCachedMessageId(initialCached.messages)
+        : undefined),
+  );
   // Highest timestamp observed from persisted JSONL messages.
   // Used to suppress startup replay events that are already on disk.
   const maxPersistedTimestampMsRef = useRef<number>(Number.NEGATIVE_INFINITY);
@@ -207,6 +242,28 @@ export function useSessionMessages(
       lastMessageIdRef.current = getMessageId(lastMessage);
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (!session || !initialLoadCompleteRef.current) return;
+
+    const lastMessageId = getLastCachedMessageId(messages);
+    setCachedSessionDetail(projectId, sessionId, {
+      session: { ...session, messages },
+      messages,
+      pagination,
+      agentContent,
+      toolUseToAgentEntries: Array.from(toolUseToAgent.entries()),
+      lastMessageId,
+    });
+  }, [
+    projectId,
+    sessionId,
+    session,
+    messages,
+    pagination,
+    agentContent,
+    toolUseToAgent,
+  ]);
 
   // Process a stream message event.
   // When replaying buffered startup events for Codex, suppress entries that are
@@ -288,38 +345,153 @@ export function useSessionMessages(
 
   // Initial load
   useEffect(() => {
+    let cancelled = false;
+    prioritizeSessionDetailLoad(projectId, sessionId);
+    const cached = getCachedSessionDetail(projectId, sessionId);
+
     initialLoadCompleteRef.current = false;
     streamBufferRef.current = [];
     maxPersistedTimestampMsRef.current = Number.NEGATIVE_INFINITY;
-    setLoading(true);
-    setAgentContent({});
 
-    api
-      .getSession(projectId, sessionId, undefined, { tailCompactions: 2 })
+    if (cached) {
+      providerRef.current = cached.session.provider;
+      lastMessageIdRef.current =
+        cached.lastMessageId ?? getLastCachedMessageId(cached.messages);
+      updatePersistedTimestampWatermark(cached.messages);
+
+      setSession(cached.session);
+      setPagination(cached.pagination);
+      setMessages(cached.messages);
+      setAgentContent(cached.agentContent);
+      setToolUseToAgent(new Map(cached.toolUseToAgentEntries));
+      setLoading(false);
+
+      initialLoadCompleteRef.current = true;
+      flushBuffer();
+
+      api
+        .getSessionMetadata(projectId, sessionId)
+        .then(async (metadata) => {
+          if (cancelled) return;
+
+          setSession((prev) =>
+            prev
+              ? { ...prev, ...metadata.session, messages: prev.messages }
+              : { ...metadata.session, messages: cached.messages },
+          );
+
+          onLoadComplete?.({
+            session: metadata.session,
+            status: metadata.ownership,
+            pendingInputRequest: metadata.pendingInputRequest,
+            slashCommands: metadata.slashCommands,
+          });
+
+          const unchanged =
+            metadata.session.updatedAt === cached.session.updatedAt &&
+            metadata.session.messageCount === cached.session.messageCount;
+          if (unchanged) return;
+
+          const data = await api.getSession(
+            projectId,
+            sessionId,
+            lastMessageIdRef.current,
+          );
+          if (cancelled) return;
+
+          if (data.messages.length > 0) {
+            updatePersistedTimestampWatermark(data.messages);
+            setMessages((prev) => {
+              const result = mergeJSONLMessages(prev, data.messages, {
+                skipDagOrdering: !getProvider(data.session.provider)
+                  .capabilities.supportsDag,
+              });
+              return isCodexProvider(data.session.provider)
+                ? reconcileCodexLinearMessages(result.messages)
+                : result.messages;
+            });
+          }
+
+          setSession((prev) =>
+            prev
+              ? { ...prev, ...data.session, messages: prev.messages }
+              : data.session,
+          );
+        })
+        .catch(() => {
+          // Cached data is already visible; background refresh failure should not blank it.
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(true);
+    setSession(null);
+    setPagination(undefined);
+    setMessages([]);
+    setAgentContent({});
+    setToolUseToAgent(new Map());
+
+    const loadSession =
+      getInFlightSessionDetailLoad<InitialSessionLoadData>(
+        projectId,
+        sessionId,
+      ) ??
+      setInFlightSessionDetailLoad(
+        projectId,
+        sessionId,
+        api
+          .getSession(projectId, sessionId, undefined, { tailCompactions: 2 })
+          .then((data): InitialSessionLoadData => {
+            const taggedMessages = data.messages.map((m) => ({
+              ...m,
+              _source: "jsonl" as const,
+            }));
+            const visibleMessages = isCodexProvider(data.session.provider)
+              ? reconcileCodexLinearMessages(taggedMessages)
+              : taggedMessages;
+            const hydratedSession = {
+              ...data.session,
+              messages: visibleMessages,
+            };
+            const lastMessageId = getLastCachedMessageId(visibleMessages);
+
+            setCachedSessionDetail(projectId, sessionId, {
+              session: hydratedSession,
+              messages: visibleMessages,
+              pagination: data.pagination,
+              agentContent: {},
+              toolUseToAgentEntries: [],
+              lastMessageId,
+            });
+
+            return {
+              ...data,
+              session: hydratedSession,
+              messages: visibleMessages,
+              lastMessageId,
+            };
+          }),
+      );
+
+    loadSession
       .then((data) => {
+        if (cancelled) return;
         setSession(data.session);
         setPagination(data.pagination);
         providerRef.current = data.session.provider;
 
-        // Tag messages from JSONL as authoritative
-        const taggedMessages = data.messages.map((m) => ({
-          ...m,
-          _source: "jsonl" as const,
-        }));
-        updatePersistedTimestampWatermark(taggedMessages);
-        setMessages(
-          isCodexProvider(data.session.provider)
-            ? reconcileCodexLinearMessages(taggedMessages)
-            : taggedMessages,
-        );
+        updatePersistedTimestampWatermark(data.messages);
+        setMessages(data.messages);
 
         // Update lastMessageIdRef synchronously to avoid race condition:
         // stream "connected" event calls fetchNewMessages() immediately, but the
         // useEffect that normally updates lastMessageIdRef runs asynchronously.
         // Without this, fetchNewMessages() would use undefined and refetch everything.
-        const lastMessage = taggedMessages[taggedMessages.length - 1];
-        if (lastMessage) {
-          lastMessageIdRef.current = getMessageId(lastMessage);
+        if (data.lastMessageId) {
+          lastMessageIdRef.current = data.lastMessageId;
         }
 
         // Mark ready and flush buffer
@@ -337,9 +509,14 @@ export function useSessionMessages(
         });
       })
       .catch((err) => {
+        if (cancelled) return;
         setLoading(false);
         onLoadError?.(err);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     projectId,
     sessionId,
@@ -511,8 +688,15 @@ export function useSessionMessages(
           ? { ...prev, ...data.session, messages: prev.messages }
           : { ...data.session, messages: [] },
       );
+      return {
+        session: data.session,
+        status: data.ownership,
+        pendingInputRequest: data.pendingInputRequest,
+        slashCommands: data.slashCommands,
+      };
     } catch {
       // Silent fail for metadata updates
+      return null;
     }
   }, [projectId, sessionId]);
 

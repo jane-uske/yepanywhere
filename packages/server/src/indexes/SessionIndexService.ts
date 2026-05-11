@@ -39,6 +39,8 @@ export interface CachedSessionSummary {
   indexedBytes: number;
   /** File mtime in milliseconds since epoch at time of indexing */
   fileMtime: number;
+  /** Optional reader-owned dependency token for summary fields outside the session file. */
+  summaryCacheToken?: string | null;
   /** True if session has no user/assistant messages (metadata-only file) */
   isEmpty?: boolean;
   /** AI provider for this session */
@@ -476,6 +478,7 @@ export class SessionIndexService implements ISessionIndexService {
     summary: SessionSummary,
     mtime: number,
     size: number,
+    summaryCacheToken?: string | null,
   ): CachedSessionSummary {
     return {
       title: summary.title,
@@ -486,6 +489,7 @@ export class SessionIndexService implements ISessionIndexService {
       contextUsage: summary.contextUsage,
       indexedBytes: size,
       fileMtime: mtime,
+      summaryCacheToken,
       provider: summary.provider,
       model: summary.model,
     };
@@ -530,6 +534,26 @@ export class SessionIndexService implements ISessionIndexService {
         `[SessionIndexService] mode=${mode} dir=${sessionDir} durationMs=${durationMs} statCalls=${statCalls} parseCalls=${parseCalls}`,
       );
     }
+  }
+
+  private async getSummaryCacheToken(
+    reader: ISessionReader,
+    sessionId: string,
+  ): Promise<string | null | undefined> {
+    if (!reader.getSummaryCacheToken) return undefined;
+
+    try {
+      return await reader.getSummaryCacheToken(sessionId);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private summaryCacheTokenMatches(
+    cached: CachedSessionSummary,
+    token: string | null | undefined,
+  ): boolean {
+    return token === undefined || cached.summaryCacheToken === token;
   }
 
   /**
@@ -608,6 +632,7 @@ export class SessionIndexService implements ISessionIndexService {
           changed.summary,
           changed.mtime,
           changed.size,
+          await this.getSummaryCacheToken(reader, sessionId),
         );
         indexChanged = true;
         continue;
@@ -627,6 +652,7 @@ export class SessionIndexService implements ISessionIndexService {
             summary,
             stats.mtimeMs,
             stats.size,
+            await this.getSummaryCacheToken(reader, sessionId),
           );
           indexChanged = true;
         } catch {
@@ -707,6 +733,7 @@ export class SessionIndexService implements ISessionIndexService {
         sessionId: string;
         mtime: number;
         size: number;
+        summaryCacheToken?: string | null;
       }[] = [];
 
       for (let i = 0; i < sessionFiles.length; i++) {
@@ -722,10 +749,16 @@ export class SessionIndexService implements ISessionIndexService {
         const mtime = stats.mtimeMs;
         const size = stats.size;
 
+        const summaryCacheToken =
+          cached && cached.fileMtime === mtime && cached.indexedBytes === size
+            ? await this.getSummaryCacheToken(reader, sessionId)
+            : undefined;
+
         if (
           cached &&
           cached.fileMtime === mtime &&
-          cached.indexedBytes === size
+          cached.indexedBytes === size &&
+          this.summaryCacheTokenMatches(cached, summaryCacheToken)
         ) {
           if (cached.isEmpty) continue;
           summaries.push({
@@ -742,19 +775,24 @@ export class SessionIndexService implements ISessionIndexService {
             model: cached.model,
           });
         } else {
-          cacheMisses.push({ sessionId, mtime, size });
+          cacheMisses.push({ sessionId, mtime, size, summaryCacheToken });
         }
       }
 
-      for (const { sessionId, mtime, size } of cacheMisses) {
+      for (const { sessionId, mtime, size, summaryCacheToken } of cacheMisses) {
         parseCalls += 1;
         const summary = await reader.getSessionSummary(sessionId, projectId);
         if (summary) {
+          const cacheToken =
+            summaryCacheToken !== undefined
+              ? summaryCacheToken
+              : await this.getSummaryCacheToken(reader, sessionId);
           summaries.push(summary);
           index.sessions[sessionId] = this.toCachedSummary(
             summary,
             mtime,
             size,
+            cacheToken,
           );
           indexChanged = true;
         } else {
@@ -991,11 +1029,16 @@ export class SessionIndexService implements ISessionIndexService {
       const stats = await fs.stat(filePath);
       const mtime = stats.mtimeMs;
       const size = stats.size;
+      const summaryCacheToken =
+        cached && cached.fileMtime === mtime && cached.indexedBytes === size
+          ? await this.getSummaryCacheToken(reader, sessionId)
+          : undefined;
 
       if (
         cached &&
         cached.fileMtime === mtime &&
-        cached.indexedBytes === size
+        cached.indexedBytes === size &&
+        this.summaryCacheTokenMatches(cached, summaryCacheToken)
       ) {
         if (cached.isEmpty) return null;
         return cached.title;
@@ -1003,7 +1046,16 @@ export class SessionIndexService implements ISessionIndexService {
 
       const summary = await reader.getSessionSummary(sessionId, projectId);
       if (summary) {
-        index.sessions[sessionId] = this.toCachedSummary(summary, mtime, size);
+        const cacheToken =
+          summaryCacheToken !== undefined
+            ? summaryCacheToken
+            : await this.getSummaryCacheToken(reader, sessionId);
+        index.sessions[sessionId] = this.toCachedSummary(
+          summary,
+          mtime,
+          size,
+          cacheToken,
+        );
         await this.saveIndex(sessionDir, reader);
         return summary.title;
       }

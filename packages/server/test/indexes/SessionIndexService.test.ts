@@ -170,6 +170,63 @@ describe("SessionIndexService", () => {
       );
       expect(sessions2[0]?.messageCount).toBe(2);
     });
+
+    it("re-parses when a reader summary cache token changes", async () => {
+      const externalSessionDir = join(testDir, "external-sessions");
+      await mkdir(externalSessionDir, { recursive: true });
+      const filePath = join(externalSessionDir, "session-1.jsonl");
+      await writeFile(filePath, "stable session file\n");
+
+      let externalTitle = "Codex generated title";
+      let parseCount = 0;
+      const tokenReader: ISessionReader = {
+        getIndexScopeKey: (sessionDir) => `codex::${sessionDir}::/tmp/project`,
+        listSessionFiles: async (sessionDir) => [
+          {
+            sessionId: "session-1",
+            filePath: join(sessionDir, "session-1.jsonl"),
+          },
+        ],
+        getSummaryCacheToken: async () => externalTitle,
+        getSessionSummary: async (
+          sessionId: string,
+          currentProjectId: string,
+        ): Promise<SessionSummary> => {
+          parseCount++;
+          const fileStats = await stat(filePath);
+          return {
+            id: sessionId,
+            projectId: currentProjectId,
+            title: externalTitle,
+            fullTitle: externalTitle,
+            createdAt: new Date(fileStats.mtimeMs).toISOString(),
+            updatedAt: new Date(fileStats.mtimeMs).toISOString(),
+            messageCount: 1,
+            ownership: { owner: "none" },
+            provider: "codex",
+          };
+        },
+        getAgentMappings: async () => [],
+        getAgentSession: async () => null,
+      };
+
+      const first = await service.getSessionsWithCache(
+        externalSessionDir,
+        projectId,
+        tokenReader,
+      );
+      expect(first[0]?.title).toBe("Codex generated title");
+
+      externalTitle = "Updated Codex title";
+      const second = await service.getSessionsWithCache(
+        externalSessionDir,
+        projectId,
+        tokenReader,
+      );
+
+      expect(second[0]?.title).toBe("Updated Codex title");
+      expect(parseCount).toBe(2);
+    });
   });
 
   describe("new files", () => {

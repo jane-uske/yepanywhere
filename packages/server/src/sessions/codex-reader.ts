@@ -11,8 +11,9 @@
  * Unlike Claude's DAG structure, Codex sessions are linear.
  */
 
+import type { Stats } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import {
   type CodexEventMsgEntry,
   type CodexFunctionCallOutputPayload,
@@ -37,7 +38,12 @@ import type {
   Session,
   SessionSummary,
 } from "../supervisor/types.js";
-import { readFirstLine, readJsonlLines } from "../utils/jsonl.js";
+import {
+  readFirstLine,
+  readJsonlLines,
+  readJsonlTailLines,
+} from "../utils/jsonl.js";
+import type { PaginationInfo } from "./pagination.js";
 import type {
   GetSessionOptions,
   ISessionReader,
@@ -55,6 +61,11 @@ export interface CodexSessionReaderOptions {
    * Only sessions with this cwd will be listed.
    */
   projectPath?: string;
+  /**
+   * Codex app thread title index. Defaults to the sibling of sessionsDir:
+   * ~/.codex/session_index.jsonl. Set to null to disable.
+   */
+  sessionIndexPath?: string | null;
 }
 
 interface CodexSessionFile {
@@ -68,6 +79,32 @@ interface CodexSessionFile {
 }
 
 const CODEX_META_READ_MAX_BYTES = 1024 * 1024;
+const CODEX_COMPACT_BOUNDARY_LINE_RE =
+  /(^|[,{])\s*"type"\s*:\s*"(?:compacted|context_compacted)"/;
+
+interface CodexSummaryCacheEntry {
+  filePath: string;
+  mtime: number;
+  size: number;
+  threadIndexMtime: number | null;
+  threadIndexSize: number | null;
+  threadName: string | null;
+  summary: SessionSummary;
+  totalCompactions: number;
+}
+
+interface CodexThreadNameCache {
+  filePath: string;
+  mtime: number;
+  size: number;
+  names: Map<string, string>;
+}
+
+interface CodexThreadNameSnapshot {
+  title: string | null;
+  indexMtime: number | null;
+  indexSize: number | null;
+}
 
 /**
  * Codex-specific session reader for Codex CLI JSONL files.
@@ -78,14 +115,22 @@ const CODEX_META_READ_MAX_BYTES = 1024 * 1024;
 export class CodexSessionReader implements ISessionReader {
   private sessionsDir: string;
   private projectPath?: string;
+  private sessionIndexPath?: string;
 
   // Cache of session ID -> file path for quick lookups
   private sessionFileCache: Map<string, CodexSessionFile> = new Map();
+  private summaryCache: Map<string, CodexSummaryCacheEntry> = new Map();
+  private threadNameCache: CodexThreadNameCache | null = null;
   private cacheTimestamp = 0;
   private readonly CACHE_TTL_MS = 5000; // 5 second cache
 
   constructor(options: CodexSessionReaderOptions) {
     this.sessionsDir = options.sessionsDir;
+    this.sessionIndexPath =
+      options.sessionIndexPath === null
+        ? undefined
+        : (options.sessionIndexPath ??
+          join(dirname(options.sessionsDir), "session_index.jsonl"));
     this.projectPath = options.projectPath
       ? canonicalizeProjectPath(options.projectPath)
       : undefined;
@@ -93,6 +138,8 @@ export class CodexSessionReader implements ISessionReader {
 
   invalidateCache(): void {
     this.sessionFileCache.clear();
+    this.summaryCache.clear();
+    this.threadNameCache = null;
     this.cacheTimestamp = 0;
   }
 
@@ -132,6 +179,21 @@ export class CodexSessionReader implements ISessionReader {
     if (!sessionFile) return null;
 
     try {
+      const stats = await stat(sessionFile.filePath);
+      const threadName = await this.getCodexThreadName(sessionId);
+      const cached = this.summaryCache.get(sessionId);
+      if (
+        cached &&
+        cached.filePath === sessionFile.filePath &&
+        cached.mtime === stats.mtimeMs &&
+        cached.size === stats.size &&
+        cached.threadIndexMtime === threadName.indexMtime &&
+        cached.threadIndexSize === threadName.indexSize &&
+        cached.threadName === threadName.title
+      ) {
+        return cached.summary;
+      }
+
       const lines = await readJsonlLines(sessionFile.filePath);
       if (lines.length === 0 || (lines.length === 1 && !lines[0])) return null;
       const entries: CodexSessionEntry[] = [];
@@ -145,50 +207,27 @@ export class CodexSessionReader implements ISessionReader {
 
       if (entries.length === 0) return null;
 
-      // Extract session metadata from first entry
-      const metaEntry = entries.find((e) => e.type === "session_meta") as
-        | CodexSessionMetaEntry
-        | undefined;
-      if (!metaEntry) return null;
-
-      const stats = await stat(sessionFile.filePath);
-      const { title, fullTitle } = this.extractTitle(entries);
-      const messageCount = this.countMessages(entries);
-      const model = this.extractModel(entries);
-      const provider = this.determineProvider(metaEntry, model);
-      const turnContext = this.extractTurnContext(entries);
-      const contextUsage = this.extractContextUsage(entries, model, provider);
-
-      // Skip sessions with no actual conversation messages
-      if (messageCount === 0) return null;
-
-      return {
-        id: sessionId,
+      const summary = this.buildSummaryFromEntries(
+        sessionId,
         projectId,
-        title,
-        fullTitle,
-        createdAt: metaEntry.payload.timestamp,
-        updatedAt: stats.mtime.toISOString(),
-        messageCount,
-        ownership: { owner: "none" },
-        contextUsage,
-        provider,
-        model,
-        originator: metaEntry.payload.originator,
-        cliVersion: metaEntry.payload.cli_version,
-        source: metaEntry.payload.source,
-        approvalPolicy: turnContext?.payload.approval_policy,
-        sandboxPolicy: turnContext?.payload.sandbox_policy
-          ? {
-              type: turnContext.payload.sandbox_policy.type,
-              networkAccess: turnContext.payload.sandbox_policy.network_access,
-              excludeTmpdirEnvVar:
-                turnContext.payload.sandbox_policy.exclude_tmpdir_env_var,
-              excludeSlashTmp:
-                turnContext.payload.sandbox_policy.exclude_slash_tmp,
-            }
-          : undefined,
-      };
+        stats,
+        entries,
+        threadName.title,
+      );
+      if (!summary) return null;
+
+      this.summaryCache.set(sessionId, {
+        filePath: sessionFile.filePath,
+        mtime: stats.mtimeMs,
+        size: stats.size,
+        threadIndexMtime: threadName.indexMtime,
+        threadIndexSize: threadName.indexSize,
+        threadName: threadName.title,
+        summary,
+        totalCompactions: this.countCompactions(entries),
+      });
+
+      return summary;
     } catch {
       return null;
     }
@@ -198,7 +237,7 @@ export class CodexSessionReader implements ISessionReader {
     sessionId: string,
     projectId: UrlProjectId,
     afterMessageId?: string,
-    _options?: GetSessionOptions,
+    options?: GetSessionOptions,
   ): Promise<LoadedSession | null> {
     const summary = await this.getSessionSummary(sessionId, projectId);
     if (!summary) return null;
@@ -206,7 +245,19 @@ export class CodexSessionReader implements ISessionReader {
     const sessionFile = await this.findSessionFile(sessionId);
     if (!sessionFile) return null;
 
-    const lines = await readJsonlLines(sessionFile.filePath);
+    const canTailRead =
+      !afterMessageId &&
+      !options?.beforeMessageId &&
+      options?.tailCompactions !== undefined &&
+      options.tailCompactions > 0;
+    const tailRead = canTailRead
+      ? await readJsonlTailLines(sessionFile.filePath, {
+          boundaryCount: options.tailCompactions ?? 0,
+          isBoundaryLine: (line) => CODEX_COMPACT_BOUNDARY_LINE_RE.test(line),
+        })
+      : null;
+    const lines =
+      tailRead?.lines ?? (await readJsonlLines(sessionFile.filePath));
 
     const entries: CodexSessionEntry[] = [];
     for (const line of lines) {
@@ -225,14 +276,34 @@ export class CodexSessionReader implements ISessionReader {
       // Logic to filter entries would go here if strict incremental loading is needed
     }
 
+    const cachedSummary = this.summaryCache.get(sessionId);
+    const totalCompactions =
+      cachedSummary?.totalCompactions ?? this.countCompactions(entries);
+    const pagination: PaginationInfo | undefined = tailRead
+      ? {
+          hasOlderMessages:
+            tailRead.truncated ||
+            (options?.tailCompactions !== undefined &&
+              totalCompactions > options.tailCompactions),
+          totalMessageCount: summary.messageCount,
+          returnedMessageCount: this.countMessages(entries),
+          truncatedBeforeMessageId: undefined,
+          totalCompactions,
+        }
+      : undefined;
+
     return {
       summary,
       data: {
-        provider: this.determineProviderFromEntries(entries),
+        provider:
+          summary.provider === "codex" || summary.provider === "codex-oss"
+            ? summary.provider
+            : this.determineProviderFromEntries(entries),
         session: {
           entries: finalEntries,
         },
       },
+      pagination,
     };
   }
 
@@ -262,6 +333,11 @@ export class CodexSessionReader implements ISessionReader {
     } catch {
       return null;
     }
+  }
+
+  async getSummaryCacheToken(sessionId: string): Promise<string | null> {
+    const threadName = await this.getCodexThreadName(sessionId);
+    return threadName.title;
   }
 
   /**
@@ -428,6 +504,60 @@ export class CodexSessionReader implements ISessionReader {
     );
   }
 
+  private buildSummaryFromEntries(
+    sessionId: string,
+    projectId: UrlProjectId,
+    stats: Stats,
+    entries: CodexSessionEntry[],
+    codexThreadName: string | null,
+  ): SessionSummary | null {
+    // Extract session metadata from first entry
+    const metaEntry = entries.find((e) => e.type === "session_meta") as
+      | CodexSessionMetaEntry
+      | undefined;
+    if (!metaEntry) return null;
+
+    const extractedTitle = this.extractTitle(entries);
+    const title = codexThreadName ?? extractedTitle.title;
+    const fullTitle = codexThreadName ?? extractedTitle.fullTitle;
+    const messageCount = this.countMessages(entries);
+    const model = this.extractModel(entries);
+    const provider = this.determineProvider(metaEntry, model);
+    const turnContext = this.extractTurnContext(entries);
+    const contextUsage = this.extractContextUsage(entries, model, provider);
+
+    // Skip sessions with no actual conversation messages
+    if (messageCount === 0) return null;
+
+    return {
+      id: sessionId,
+      projectId,
+      title,
+      fullTitle,
+      createdAt: metaEntry.payload.timestamp,
+      updatedAt: stats.mtime.toISOString(),
+      messageCount,
+      ownership: { owner: "none" },
+      contextUsage,
+      provider,
+      model,
+      originator: metaEntry.payload.originator,
+      cliVersion: metaEntry.payload.cli_version,
+      source: metaEntry.payload.source,
+      approvalPolicy: turnContext?.payload.approval_policy,
+      sandboxPolicy: turnContext?.payload.sandbox_policy
+        ? {
+            type: turnContext.payload.sandbox_policy.type,
+            networkAccess: turnContext.payload.sandbox_policy.network_access,
+            excludeTmpdirEnvVar:
+              turnContext.payload.sandbox_policy.exclude_tmpdir_env_var,
+            excludeSlashTmp:
+              turnContext.payload.sandbox_policy.exclude_slash_tmp,
+          }
+        : undefined,
+    };
+  }
+
   /**
    * Extract title from entries (first user message).
    */
@@ -483,6 +613,62 @@ export class CodexSessionReader implements ISessionReader {
     return { title: null, fullTitle: null };
   }
 
+  private async getCodexThreadName(
+    sessionId: string,
+  ): Promise<CodexThreadNameSnapshot> {
+    if (!this.sessionIndexPath) {
+      return { title: null, indexMtime: null, indexSize: null };
+    }
+
+    try {
+      const stats = await stat(this.sessionIndexPath);
+      let cache = this.threadNameCache;
+      if (
+        !cache ||
+        cache.filePath !== this.sessionIndexPath ||
+        cache.mtime !== stats.mtimeMs ||
+        cache.size !== stats.size
+      ) {
+        const names = new Map<string, string>();
+        const lines = await readJsonlLines(this.sessionIndexPath);
+        for (const line of lines) {
+          try {
+            const record = JSON.parse(line) as {
+              id?: unknown;
+              thread_name?: unknown;
+            };
+            if (
+              typeof record.id === "string" &&
+              typeof record.thread_name === "string"
+            ) {
+              const threadName = record.thread_name.trim();
+              if (threadName) {
+                names.set(record.id, threadName);
+              }
+            }
+          } catch {
+            // Ignore corrupt index lines; session JSONL remains the fallback.
+          }
+        }
+        cache = {
+          filePath: this.sessionIndexPath,
+          mtime: stats.mtimeMs,
+          size: stats.size,
+          names,
+        };
+        this.threadNameCache = cache;
+      }
+
+      return {
+        title: cache.names.get(sessionId) ?? null,
+        indexMtime: stats.mtimeMs,
+        indexSize: stats.size,
+      };
+    } catch {
+      return { title: null, indexMtime: null, indexSize: null };
+    }
+  }
+
   private isSystemPromptUserMessage(text: string): boolean {
     const trimmed = text.trimStart();
     return (
@@ -520,6 +706,21 @@ export class CodexSessionReader implements ISessionReader {
       }
     }
 
+    return count;
+  }
+
+  private countCompactions(entries: CodexSessionEntry[]): number {
+    let count = 0;
+    for (const entry of entries) {
+      if (entry.type === "compacted") {
+        count++;
+      } else if (
+        entry.type === "event_msg" &&
+        entry.payload.type === "context_compacted"
+      ) {
+        count++;
+      }
+    }
     return count;
   }
 
