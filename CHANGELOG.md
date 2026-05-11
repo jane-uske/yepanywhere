@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add custom Codex slash command entries for the message input.
 
 ### Changed
+- Publish npm distribution as `@jane-uske/yepanywhere`.
 - Improve remote session loading with session view caching and tail-based session detail reads.
 - Serve built static frontend assets for non-local dev hosts to reduce mobile and tunnel loading overhead.
 - Refresh app and site icons plus status and processing UI styling.

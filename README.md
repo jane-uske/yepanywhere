@@ -65,13 +65,13 @@ No database, no cloud, no accounts. 100% open source (MIT).
 If you can install Claude Code or Codex, you can install this. Minimal dependencies.
 
 ```
-npm i -g yepanywhere
+npm i -g @jane-uske/yepanywhere
 yepanywhere
 ```
 
 Or, from source:
 ```bash
-git clone https://github.com/kzahel/yepanywhere.git
+git clone https://github.com/jane-uske/yepanywhere.git
 cd yepanywhere
 pnpm install
 pnpm build

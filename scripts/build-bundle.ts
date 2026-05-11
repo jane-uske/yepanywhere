@@ -260,7 +260,7 @@ step("Generate package.json for npm", () => {
 
   // Create a new package.json for publishing
   const npmPackageJson: Record<string, unknown> = {
-    name: "yepanywhere",
+    name: "@jane-uske/yepanywhere",
     version: NPM_VERSION,
     description: "A mobile-first supervisor for Claude Code agents",
     type: "module",
@@ -280,11 +280,11 @@ step("Generate package.json for npm", () => {
     ),
     repository: {
       type: "git",
-      url: "git+https://github.com/kzahel/yepanywhere.git",
+      url: "git+https://github.com/jane-uske/yepanywhere.git",
     },
-    homepage: "https://github.com/kzahel/yepanywhere#readme",
+    homepage: "https://github.com/jane-uske/yepanywhere#readme",
     bugs: {
-      url: "https://github.com/kzahel/yepanywhere/issues",
+      url: "https://github.com/jane-uske/yepanywhere/issues",
     },
     keywords: ["claude", "ai", "agent", "supervisor", "mobile"],
     license: "MIT",
@@ -300,7 +300,7 @@ step("Generate package.json for npm", () => {
     `${JSON.stringify(npmPackageJson, null, 2)}\n`,
   );
 
-  log("  Package name: yepanywhere");
+  log("  Package name: @jane-uske/yepanywhere");
   log(`  Version: ${NPM_VERSION}`);
   log("  Written to: dist/npm-package/package.json");
   log("  (Original packages/server/package.json unchanged)");
@@ -316,14 +316,14 @@ step("Copy README to staging", () => {
     log("  Copied README.md from repo root");
   } else {
     // Create a basic README if none exists
-    const basicReadme = `# yepanywhere
+    const basicReadme = `# @jane-uske/yepanywhere
 
 A mobile-first supervisor for Claude Code agents.
 
 ## Installation
 
 \`\`\`bash
-npm install -g yepanywhere
+npm install -g @jane-uske/yepanywhere
 \`\`\`
 
 ## Usage
