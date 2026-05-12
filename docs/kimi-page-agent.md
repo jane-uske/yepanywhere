@@ -17,12 +17,16 @@ When enabled:
 - sends `YEP_KPA_READY` to the parent frame
 - accepts `KPA_CONTEXT` messages from trusted `chrome-extension://` origins
 - the new-session page receives context but does not show an inner element picker
-- the existing session page can still show a compact Aidc-pageAgent context panel
+- the embedded Yep page does not render its own Aidc-pageAgent picker panel; the
+  outer extension owns selection and refresh controls
 - selected-page context is converted into the user message sent to the agent
 - the outer extension owns element selection and can open a fresh new-session iframe
 - page context includes a `page.product` classification; Alime maps to
   `https://code.alibaba-inc.com/aidc-mefe`, Xspace maps to
   `https://code.alibaba-inc.com/aidc-xspace`
+- Xspace page context may include `page.xspace.repoHint`; for URLs such as
+  `/index.htm#/system/oms/pbx-new/operation-dashboard`, the last route segment
+  `operation-dashboard` is used as the primary fuzzy repository search hint
 
 ## Inbound Messages
 

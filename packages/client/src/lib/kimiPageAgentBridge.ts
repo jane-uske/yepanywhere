@@ -46,6 +46,7 @@ export interface KimiPageAgentContext {
         } | null;
       } | null;
     };
+    xspace?: KimiPageAgentXspaceContext | null;
   };
   selection?: {
     element?: {
@@ -81,6 +82,16 @@ export interface KimiPageAgentContext {
   } | null;
   screenshot?: string | { error?: string };
   [key: string]: unknown;
+}
+
+export interface KimiPageAgentXspaceContext {
+  routePath?: string;
+  routeSegments?: string[];
+  pageName?: string;
+  repoHint?: string;
+  searchTerms?: string[];
+  isPageRoute?: boolean;
+  source?: string;
 }
 
 export type KimiPageAgentInboundMessage =
@@ -203,15 +214,22 @@ export function buildKimiPageAgentPrompt(
     : "请基于当前页面上下文定位相关代码并完成修改。";
   const task = instruction?.trim() || fallback;
   const productTarget = resolveProductTarget(context);
+  const xspaceRouteHint =
+    productTarget.key === "xspace" ? resolveXspaceRouteHint(context) : null;
   const codeGroupConstraint = productTarget.codeGroup
     ? `- 页面产品分类为 ${productTarget.label}，代码平台搜索范围使用 ${productTarget.codeGroup}。`
     : "- 页面产品暂未明确分类；先根据域名、页面标题、资源路径判断产品归属。确认是 Xspace 时使用 https://code.alibaba-inc.com/aidc-xspace，确认是 Alime 时使用 https://code.alibaba-inc.com/aidc-mefe。";
+  const xspaceRouteConstraint =
+    xspaceRouteHint?.repoHint && productTarget.codeGroup
+      ? `- Xspace 页面路由线索为 ${xspaceRouteHint.routePath ?? "-"}；如果是 page 路由，优先用最后一段 ${xspaceRouteHint.repoHint} 在当前 workspace 和 ${productTarget.codeGroup} 代码组做模糊检索。`
+      : null;
 
   return [
     task,
     "",
     "执行约束：",
     codeGroupConstraint,
+    ...(xspaceRouteConstraint ? [xspaceRouteConstraint] : []),
     "- 定位仓库时先检查当前 workspace 内是否已有对应仓库；没有时，再通过 code 平台 MCP 在产品对应代码组搜索并下载/拉取。",
     "- 不要在 workspace 之外盲目扫本地目录；如果 workspace 与 code 平台结果冲突，说明选择依据。",
     "- 定位仓库后按需要通过 o2 MCP 建迭代、推进改动、提交和部署。",
@@ -220,7 +238,7 @@ export function buildKimiPageAgentPrompt(
     "",
     "页面上下文来自 Aidc-pageAgent 浏览器插件：",
     "```json",
-    JSON.stringify(getPromptContext(context), null, 2),
+    JSON.stringify(getPromptContext(context, xspaceRouteHint), null, 2),
     "```",
     "",
     "请基于上述最小页面上下文定位代码并完成修改，最后说明改动和验证结果。",
@@ -245,12 +263,23 @@ function resolveProductTarget(context: KimiPageAgentContext) {
   }
 
   const currentPage = context.page?.alime?.currentPage;
+  const xspaceRouteHint = resolveXspaceRouteHint(context);
+  if (xspaceRouteHint?.routePath?.startsWith("/system/")) {
+    return {
+      key: "xspace",
+      label: "Xspace",
+      codeGroup: "https://code.alibaba-inc.com/aidc-xspace",
+    };
+  }
+
   const signal = [
     context.tab?.url,
     context.tab?.title,
     context.page?.shell?.origin,
     context.page?.shell?.pathname,
     context.page?.shell?.title,
+    xspaceRouteHint?.routePath,
+    xspaceRouteHint?.repoHint,
     currentPage?.path,
     currentPage?.app?.group,
     currentPage?.app?.name,
@@ -282,7 +311,100 @@ function resolveProductTarget(context: KimiPageAgentContext) {
   };
 }
 
-function getPromptContext(context: KimiPageAgentContext) {
+function resolveXspaceRouteHint(
+  context: KimiPageAgentContext,
+): KimiPageAgentXspaceContext | null {
+  const fromPayload = normalizeXspaceRouteHint(context.page?.xspace);
+  if (fromPayload?.repoHint) return fromPayload;
+
+  return (
+    parseXspaceRouteHint(context.tab?.url) ??
+    parseXspaceRouteHint(context.page?.shell?.url) ??
+    null
+  );
+}
+
+function normalizeXspaceRouteHint(
+  value: KimiPageAgentXspaceContext | null | undefined,
+): KimiPageAgentXspaceContext | null {
+  if (!value) return null;
+
+  const rebuilt = value.routePath
+    ? buildXspaceRouteHint(value.routePath, value.source ?? "plugin")
+    : null;
+  const repoHint = value.repoHint || rebuilt?.repoHint || value.pageName;
+  if (!repoHint) return rebuilt;
+
+  return pickDefined({
+    routePath: rebuilt?.routePath ?? value.routePath,
+    routeSegments: value.routeSegments ?? rebuilt?.routeSegments,
+    pageName: value.pageName ?? repoHint,
+    repoHint,
+    searchTerms: uniqueStrings([
+      ...(value.searchTerms ?? []),
+      ...(rebuilt?.searchTerms ?? []),
+      repoHint,
+    ]).slice(0, 4),
+    isPageRoute: value.isPageRoute ?? rebuilt?.isPageRoute,
+    source: value.source ?? rebuilt?.source,
+  });
+}
+
+function parseXspaceRouteHint(
+  rawUrl: string | null | undefined,
+): KimiPageAgentXspaceContext | null {
+  if (!rawUrl) return null;
+
+  let hash = "";
+  try {
+    hash = new URL(rawUrl, "https://aidc-page-agent.invalid").hash;
+  } catch {
+    const hashIndex = rawUrl.indexOf("#");
+    hash = hashIndex >= 0 ? rawUrl.slice(hashIndex) : "";
+  }
+
+  if (!hash) return null;
+  const routePath = normalizeRoutePath(hash.replace(/^#/, ""));
+  return routePath ? buildXspaceRouteHint(routePath, "url-hash") : null;
+}
+
+function normalizeRoutePath(value: string) {
+  const withoutQuery = value.replace(/^!/, "").split(/[?#]/)[0] ?? "";
+  const decoded = safeDecodeUri(withoutQuery).trim();
+  const withSlash = decoded.startsWith("/") ? decoded : `/${decoded}`;
+  const normalized = withSlash.replace(/\/+/g, "/").replace(/\/$/, "");
+  if (!normalized || normalized === "/") return "";
+  return normalized;
+}
+
+function buildXspaceRouteHint(
+  routePath: string,
+  source: string,
+): KimiPageAgentXspaceContext | null {
+  const normalizedRoutePath = normalizeRoutePath(routePath);
+  if (!normalizedRoutePath) return null;
+
+  const routeSegments = normalizedRoutePath.split("/").filter(Boolean);
+  const repoHint = routeSegments.at(-1);
+  if (!repoHint) return null;
+
+  return {
+    routePath: normalizedRoutePath,
+    routeSegments,
+    pageName: repoHint,
+    repoHint,
+    searchTerms: uniqueStrings([repoHint, routeSegments.at(-2)]).slice(0, 4),
+    isPageRoute: true,
+    source,
+  };
+}
+
+function getPromptContext(
+  context: KimiPageAgentContext,
+  xspaceRouteHint: KimiPageAgentXspaceContext | null = resolveXspaceRouteHint(
+    context,
+  ),
+) {
   const selection = context.selection;
   const currentPage = context.page?.alime?.currentPage;
   const element = selection?.element;
@@ -317,6 +439,17 @@ function getPromptContext(context: KimiPageAgentContext) {
             subLink: currentPage.subLink,
           })
         : null,
+      xspace: xspaceRouteHint
+        ? pickDefined({
+            routePath: xspaceRouteHint.routePath,
+            routeSegments: xspaceRouteHint.routeSegments,
+            pageName: xspaceRouteHint.pageName,
+            repoHint: xspaceRouteHint.repoHint,
+            searchTerms: xspaceRouteHint.searchTerms,
+            isPageRoute: xspaceRouteHint.isPageRoute,
+            source: xspaceRouteHint.source,
+          })
+        : null,
     }),
     selection: selection
       ? pickDefined({
@@ -343,6 +476,18 @@ function getPromptContext(context: KimiPageAgentContext) {
         })
       : null,
   };
+}
+
+function safeDecodeUri(value: string) {
+  try {
+    return decodeURI(value);
+  } catch {
+    return value;
+  }
+}
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean))) as string[];
 }
 
 function pickComputedStyle(style?: Record<string, string>) {
