@@ -76,6 +76,9 @@ interface Props {
   slashCommands?: string[];
   /** Callback for custom client-side commands (e.g., "model"). Return true if handled. */
   onCustomCommand?: (command: string) => boolean;
+  /** External text injection from host integrations such as Kimi Page Agent. */
+  injectedText?: { id: string; text: string } | null;
+  onInjectedTextApplied?: (id: string) => void;
 }
 
 export function MessageInput({
@@ -104,6 +107,8 @@ export function MessageInput({
   supportsThinkingToggle = true,
   slashCommands = [],
   onCustomCommand,
+  injectedText,
+  onInjectedTextApplied,
 }: Props) {
   const { t } = useI18n();
   const [text, setText, controls] = useDraftPersistence(draftKey);
@@ -113,6 +118,14 @@ export function MessageInput({
   // User-controlled collapse state (independent of external collapse from approval panel)
   const [userCollapsed, setUserCollapsed] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState("");
+
+  useEffect(() => {
+    if (!injectedText) return;
+    setInterimTranscript("");
+    setText(injectedText.text);
+    onInjectedTextApplied?.(injectedText.id);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, [injectedText, onInjectedTextApplied, setText]);
 
   // Combined display text: committed text + interim transcript
   const displayText = interimTranscript

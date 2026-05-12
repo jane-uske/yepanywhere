@@ -90,6 +90,11 @@ export interface NewSessionFormProps {
   placeholder?: string;
   /** Compact mode: no header, no mode selector (default: false) */
   compact?: boolean;
+  /** External text injection from host integrations such as Kimi Page Agent. */
+  injectedText?: { id: string; text: string; autoStart?: boolean } | null;
+  onInjectedTextApplied?: (id: string) => void;
+  /** Transform the typed message before creating the session. */
+  transformMessage?: (message: string) => string;
 }
 
 export function NewSessionForm({
@@ -98,6 +103,9 @@ export function NewSessionForm({
   rows = 6,
   placeholder,
   compact = false,
+  injectedText,
+  onInjectedTextApplied,
+  transformMessage,
 }: NewSessionFormProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -123,6 +131,11 @@ export function NewSessionForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const voiceButtonRef = useRef<VoiceInputButtonRef>(null);
   const hasInitializedDefaultsRef = useRef(false);
+  const appliedInjectedTextRef = useRef<string | null>(null);
+  const autoStartedInjectedTextRef = useRef<string | null>(null);
+  const startSessionRef = useRef<(overrideMessage?: string) => Promise<void>>(
+    async () => {},
+  );
 
   // Thinking toggle state
   const { thinkingMode, cycleThinkingMode, thinkingLevel, setThinkingSetting } =
@@ -351,12 +364,15 @@ export function NewSessionForm({
     updateServerSetting,
   ]);
 
-  const handleStartSession = async () => {
+  const handleStartSession = async (overrideMessage?: string) => {
     // Stop voice recording and get any pending interim text
-    const pendingVoice = voiceButtonRef.current?.stopAndFinalize() ?? "";
+    const pendingVoice =
+      overrideMessage === undefined
+        ? (voiceButtonRef.current?.stopAndFinalize() ?? "")
+        : "";
 
     // Combine committed text with any pending voice text
-    let finalMessage = message.trimEnd();
+    let finalMessage = (overrideMessage ?? message).trimEnd();
     if (pendingVoice) {
       finalMessage = finalMessage
         ? `${finalMessage} ${pendingVoice}`
@@ -366,7 +382,11 @@ export function NewSessionForm({
     const hasContent = finalMessage.trim() || pendingFiles.length > 0;
     if (!projectId || !hasContent || isStarting) return;
 
-    const trimmedMessage = finalMessage.trim();
+    const typedMessage = finalMessage.trim();
+    const trimmedMessage =
+      overrideMessage === undefined && transformMessage
+        ? transformMessage(typedMessage)
+        : typedMessage;
 
     setInterimTranscript("");
     setIsStarting(true);
@@ -492,6 +512,36 @@ export function NewSessionForm({
       showToast(errorMessage, "error");
     }
   };
+  startSessionRef.current = handleStartSession;
+
+  useEffect(() => {
+    if (!injectedText || appliedInjectedTextRef.current === injectedText.id) {
+      return;
+    }
+
+    appliedInjectedTextRef.current = injectedText.id;
+    setInterimTranscript("");
+    setMessage(injectedText.text);
+    if (!injectedText.autoStart) {
+      onInjectedTextApplied?.(injectedText.id);
+    }
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  }, [injectedText, onInjectedTextApplied, setMessage]);
+
+  useEffect(() => {
+    if (
+      !injectedText?.autoStart ||
+      autoStartedInjectedTextRef.current === injectedText.id ||
+      isStarting ||
+      providersLoading ||
+      settingsLoading
+    ) {
+      return;
+    }
+
+    autoStartedInjectedTextRef.current = injectedText.id;
+    void startSessionRef.current(injectedText.text);
+  }, [injectedText, isStarting, providersLoading, settingsLoading]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter") {
@@ -699,7 +749,7 @@ export function NewSessionForm({
         </div>
         <button
           type="button"
-          onClick={handleStartSession}
+          onClick={() => handleStartSession()}
           disabled={isStarting || !hasContent}
           className="send-button"
           aria-label={t("newSessionStartAction")}

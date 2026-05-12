@@ -71,6 +71,13 @@ export function createAuthMiddleware(
   return async (c, next) => {
     const path = c.req.path;
 
+    // Public, non-secret integration diagnostics for browser extensions.
+    // The route still passes host/CORS checks before reaching this middleware.
+    if (path === "/api/kimi-page-agent/preflight") {
+      await next();
+      return;
+    }
+
     // Skip auth for health check (always open for readiness probes)
     if (path === "/health") {
       await next();

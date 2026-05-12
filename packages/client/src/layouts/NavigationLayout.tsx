@@ -4,6 +4,7 @@ import { Sidebar } from "../components/Sidebar";
 import { useSidebarPreference } from "../hooks/useSidebarPreference";
 import { useSidebarWidth } from "../hooks/useSidebarWidth";
 import { useViewportWidth } from "../hooks/useViewportWidth";
+import { isKimiPageAgentMode } from "../lib/kimiPageAgentBridge";
 
 export interface NavigationLayoutContext {
   /** Open the mobile sidebar */
@@ -34,6 +35,7 @@ export function NavigationLayout() {
     canShowExpanded,
   } = useSidebarWidth();
   const viewportWidth = useViewportWidth();
+  const kimiPageAgentMode = isKimiPageAgentMode();
 
   // Desktop mode as long as collapsed sidebar fits
   const isWideScreen = canShowDesktop(viewportWidth);
@@ -73,7 +75,7 @@ export function NavigationLayout() {
 
   return (
     <div
-      className={`session-page ${isWideScreen ? "desktop-layout" : ""} ${isResizing ? "resizing" : ""}`}
+      className={`session-page ${isWideScreen ? "desktop-layout" : ""} ${isResizing ? "resizing" : ""} ${kimiPageAgentMode ? "kimi-page-agent-embed" : ""}`}
       style={containerStyle}
     >
       {/* Desktop sidebar - always visible on wide screens */}

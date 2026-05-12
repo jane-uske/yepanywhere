@@ -2,6 +2,7 @@ import type { ProviderName, UploadedFile } from "@yep-anywhere/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { KimiPageAgentPanel } from "../components/KimiPageAgentPanel";
 import { MessageInput, type UploadProgress } from "../components/MessageInput";
 import { MessageInputToolbar } from "../components/MessageInputToolbar";
 import { MessageList } from "../components/MessageList";
@@ -37,6 +38,19 @@ import {
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
 import { getCodexSlashCommandsForSession } from "../lib/codexSlashCommands";
+import {
+  type KimiPageAgentContext,
+  type KimiPageAgentInboundMessage,
+  buildKimiPageAgentPrompt,
+  getKimiContextSummary,
+  isKimiPageAgentMode,
+  isTrustedKimiPageAgentOrigin,
+  postKimiPageAgentMessage,
+} from "../lib/kimiPageAgentBridge";
+import {
+  readKimiPageAgentContext,
+  writeKimiPageAgentContext,
+} from "../lib/kimiPageAgentContextStore";
 import { generateUUID } from "../lib/uuid";
 import { getSessionDisplayTitle } from "../utils";
 
@@ -183,6 +197,16 @@ function SessionPageContent({
     draftControlsRef.current = controls;
   }, []);
   const { showToast } = useToastContext();
+  const kimiMode = isKimiPageAgentMode();
+  const [kimiContext, setKimiContext] = useState<KimiPageAgentContext | null>(
+    () => readKimiPageAgentContext()?.context ?? null,
+  );
+  const [kimiInstruction, setKimiInstruction] = useState<string | undefined>();
+  const [kimiInjectedText, setKimiInjectedText] = useState<{
+    id: string;
+    text: string;
+  } | null>(null);
+  const kimiSendRef = useRef<((text: string) => Promise<void>) | null>(null);
 
   // Sharing: check if configured (hidden unless sharing.json exists on server)
   const [sharingConfigured, setSharingConfigured] = useState(false);
@@ -329,8 +353,12 @@ function SessionPageContent({
   });
 
   const handleSend = async (text: string) => {
+    const outgoingText =
+      kimiMode && kimiContext
+        ? buildKimiPageAgentPrompt(kimiContext, text)
+        : text;
     // Add to pending queue and get tempId to pass to server
-    const tempId = addPendingMessage(text);
+    const tempId = addPendingMessage(outgoingText);
     setProcessState("in-turn"); // Optimistic: show processing indicator immediately
     setScrollTrigger((prev) => prev + 1); // Force scroll to bottom
 
@@ -368,7 +396,7 @@ function SessionPageContent({
         const result = await api.resumeSession(
           projectId,
           sessionId,
-          text,
+          outgoingText,
           {
             mode: permissionMode,
             model,
@@ -386,7 +414,7 @@ function SessionPageContent({
         const thinking = getThinkingSetting();
         const result = await api.queueMessage(
           sessionId,
-          text,
+          outgoingText,
           permissionMode,
           currentAttachments.length > 0 ? currentAttachments : undefined,
           tempId,
@@ -415,7 +443,7 @@ function SessionPageContent({
           const result = await api.resumeSession(
             projectId,
             sessionId,
-            text,
+            outgoingText,
             {
               mode: permissionMode,
               model,
@@ -444,9 +472,122 @@ function SessionPageContent({
       showToast(t("sessionSendFailed", { message: errorMsg }), "error");
     }
   };
+  kimiSendRef.current = handleSend;
+
+  const buildCurrentKimiPrompt = useCallback(
+    (instruction?: string) => {
+      if (!kimiContext) return null;
+      return buildKimiPageAgentPrompt(
+        kimiContext,
+        instruction ?? kimiInstruction,
+      );
+    },
+    [kimiContext, kimiInstruction],
+  );
+
+  const requestKimiContext = useCallback(() => {
+    postKimiPageAgentMessage({ type: "YEP_KPA_REQUEST_CONTEXT" });
+  }, []);
+
+  const requestKimiElementSelection = useCallback(() => {
+    postKimiPageAgentMessage({ type: "YEP_KPA_START_PICKER" });
+  }, []);
+
+  const insertKimiPrompt = useCallback(() => {
+    const prompt = buildCurrentKimiPrompt();
+    if (!prompt) return;
+    setKimiInjectedText({ id: generateUUID(), text: prompt });
+  }, [buildCurrentKimiPrompt]);
+
+  const sendKimiPrompt = useCallback(() => {
+    const prompt = buildCurrentKimiPrompt();
+    if (!prompt) return;
+    void kimiSendRef.current?.(prompt);
+    postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+  }, [buildCurrentKimiPrompt]);
+
+  useEffect(() => {
+    if (!kimiMode) return;
+
+    postKimiPageAgentMessage({
+      type: "YEP_KPA_READY",
+      capabilities: [
+        "receivePageContext",
+        "requestElementSelection",
+        "requestContextRefresh",
+        "insertPrompt",
+        "sendPrompt",
+      ],
+    });
+
+    const onMessage = (event: MessageEvent<KimiPageAgentInboundMessage>) => {
+      const data = event.data;
+      if (
+        !data ||
+        typeof data !== "object" ||
+        !("type" in data) ||
+        !String(data.type).startsWith("KPA_") ||
+        !isTrustedKimiPageAgentOrigin(event.origin)
+      ) {
+        return;
+      }
+
+      if (data.type === "KPA_PING") {
+        postKimiPageAgentMessage({
+          type: "YEP_KPA_READY",
+          capabilities: [
+            "receivePageContext",
+            "requestElementSelection",
+            "requestContextRefresh",
+            "insertPrompt",
+            "sendPrompt",
+          ],
+        });
+        return;
+      }
+
+      const nextContext =
+        data.type === "KPA_CONTEXT"
+          ? (data.payload ?? data.context ?? null)
+          : (data.payload?.context ?? null);
+      const nextInstruction =
+        data.type === "KPA_CONTEXT"
+          ? data.instruction
+          : data.payload?.instruction;
+
+      if (!nextContext) return;
+
+      writeKimiPageAgentContext(nextContext);
+      setKimiContext(nextContext);
+      setKimiInstruction(nextInstruction);
+
+      const summary = getKimiContextSummary(nextContext);
+      postKimiPageAgentMessage({
+        type: "YEP_KPA_CONTEXT_RECEIVED",
+        app: summary.appLabel,
+        hasSelection: Boolean(nextContext.selection),
+      });
+
+      const prompt = buildKimiPageAgentPrompt(nextContext, nextInstruction);
+      if (data.type === "KPA_INSERT_PROMPT" || data.autoInsert) {
+        setKimiInjectedText({ id: generateUUID(), text: prompt });
+      }
+      if (data.type === "KPA_CONTEXT" && data.autoSend) {
+        void kimiSendRef.current?.(prompt);
+        postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [kimiMode]);
 
   const handleQueue = async (text: string) => {
-    const tempId = addPendingMessage(text);
+    const outgoingText =
+      kimiMode && kimiContext
+        ? buildKimiPageAgentPrompt(kimiContext, text)
+        : text;
+    const tempId = addPendingMessage(outgoingText);
     setScrollTrigger((prev) => prev + 1);
 
     // Capture already-completed attachments
@@ -472,7 +613,7 @@ function SessionPageContent({
       const thinking = getThinkingSetting();
       await api.queueMessage(
         sessionId,
-        text,
+        outgoingText,
         permissionMode,
         currentAttachments.length > 0 ? currentAttachments : undefined,
         tempId,
@@ -1142,6 +1283,17 @@ function SessionPageContent({
             className={`session-connection-bar session-connection-${sessionConnectionStatus}`}
           />
           <div className="session-input-inner">
+            {kimiMode && (
+              <KimiPageAgentPanel
+                context={kimiContext}
+                onSelectElement={requestKimiElementSelection}
+                onRefreshContext={requestKimiContext}
+                onInsertPrompt={insertKimiPrompt}
+                onSendPrompt={sendKimiPrompt}
+                disabled={status.owner === "external"}
+              />
+            )}
+
             {/* User question panel */}
             {pendingInputRequest &&
               pendingInputRequest.sessionId === actualSessionId &&
@@ -1240,6 +1392,12 @@ function SessionPageContent({
                   status.owner === "external" ? [] : allSlashCommands
                 }
                 onCustomCommand={handleCustomCommand}
+                injectedText={kimiInjectedText}
+                onInjectedTextApplied={(id) => {
+                  setKimiInjectedText((current) =>
+                    current?.id === id ? null : current,
+                  );
+                }}
               />
             )}
           </div>

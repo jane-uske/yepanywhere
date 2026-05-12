@@ -47,6 +47,7 @@ import { createGitStatusRoutes } from "./routes/git-status.js";
 import { createGlobalSessionsRoutes } from "./routes/global-sessions.js";
 import { health } from "./routes/health.js";
 import { createInboxRoutes } from "./routes/inbox.js";
+import { createKimiPageAgentRoutes } from "./routes/kimi-page-agent.js";
 import { createNetworkBindingRoutes } from "./routes/network-binding.js";
 import { createOnboardingRoutes } from "./routes/onboarding.js";
 import { createProcessesRoutes } from "./routes/processes.js";
@@ -447,6 +448,18 @@ export function createApp(options: AppOptions): AppResult {
         false,
       installId: options.installId,
       voiceInputEnabled: options.voiceInputEnabled,
+    }),
+  );
+
+  // Kimi Page Agent browser extension preflight.
+  // This route intentionally returns no secrets; auth middleware allows it so
+  // extensions can diagnose iframe/WS/auth setup before opening the embed.
+  app.route(
+    "/api/kimi-page-agent",
+    createKimiPageAgentRoutes({
+      authService: options.authService,
+      authDisabled: options.authDisabled,
+      desktopAuthToken: options.desktopAuthToken,
     }),
   );
 
