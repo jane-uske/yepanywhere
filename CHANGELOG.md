@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.30] - 2026-05-12
+
 ### Added
 - Add Codex `/think` and `/fast` client commands for changing reasoning and fast service-tier preferences from the session input.
 - Persist Codex fast service-tier preferences in new-session defaults and pass them through start, resume, and queued-message flows.
 
 ### Changed
 - Render compact Edit diff buttons on mobile instead of large inline diff previews, with full diff access still available in the modal.
+- Publish npm automatically from `main` when the package version has not already been released.
 
 ## [0.4.29] - 2026-05-12
 

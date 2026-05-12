@@ -2,11 +2,19 @@ name: Publish to npm
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+
+concurrency:
+  group: npm-publish-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   publish:
+    if: github.repository == 'jane-uske/yepanywhere'
     runs-on: ubuntu-latest
     permissions:
       contents: write  # For creating GitHub releases
@@ -29,20 +37,52 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Determine npm version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="$(node -p "require('./package.json').version")"
+          fi
+
+          echo "PACKAGE_NAME=@jane-uske/yepanywhere" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Publishing candidate: @jane-uske/yepanywhere@${VERSION}"
+
+      - name: Check whether version is already published
+        id: published
+        run: |
+          PACKAGE="${{ steps.version.outputs.PACKAGE_NAME }}"
+          VERSION="${{ steps.version.outputs.VERSION }}"
+
+          if npm view "${PACKAGE}@${VERSION}" version --json >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${PACKAGE}@${VERSION} is already published. Skipping npm publish."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "${PACKAGE}@${VERSION} is not published yet."
+          fi
+
+      - name: Report skipped publish
+        if: steps.published.outputs.exists == 'true'
+        run: |
+          echo "No publish needed because version ${{ steps.version.outputs.VERSION }} already exists on npm."
+
       - name: Run linter
+        if: steps.published.outputs.exists == 'false'
         run: pnpm lint
 
       - name: Run type checking
+        if: steps.published.outputs.exists == 'false'
         run: pnpm typecheck
 
       - name: Run tests
+        if: steps.published.outputs.exists == 'false'
         run: pnpm test
 
-      - name: Extract version from tag
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
       - name: Verify changelog has entry for version
+        if: steps.published.outputs.exists == 'false' || github.ref_type == 'tag'
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           if ! grep -q "## \[${VERSION}\]" CHANGELOG.md; then
@@ -53,22 +93,26 @@ jobs:
           echo "Changelog entry found for version ${VERSION}"
 
       - name: Build bundle for npm
+        if: steps.published.outputs.exists == 'false'
         run: pnpm build:bundle
         env:
           NPM_VERSION: ${{ steps.version.outputs.VERSION }}
 
       - name: Verify package contents
+        if: steps.published.outputs.exists == 'false'
         run: |
           cd dist/npm-package
           npm pack --dry-run
           echo "Package contents verified"
 
       - name: Publish to npm
+        if: steps.published.outputs.exists == 'false'
         run: |
           cd dist/npm-package
           npm publish --provenance --access public
 
       - name: Extract changelog for release notes
+        if: github.ref_type == 'tag'
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
           awk "/^## \\[$VERSION\\]/{found=1; next} /^## \\[/{found=0} found" CHANGELOG.md > /tmp/release-notes.md
@@ -76,6 +120,7 @@ jobs:
           cat /tmp/release-notes.md
 
       - name: Create GitHub Release
+        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           name: v${{ steps.version.outputs.VERSION }}
