@@ -2,7 +2,6 @@ import type { ProviderName, UploadedFile } from "@yep-anywhere/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { KimiPageAgentPanel } from "../components/KimiPageAgentPanel";
 import { MessageInput, type UploadProgress } from "../components/MessageInput";
 import { MessageInputToolbar } from "../components/MessageInputToolbar";
 import { MessageList } from "../components/MessageList";
@@ -201,7 +200,6 @@ function SessionPageContent({
   const [kimiContext, setKimiContext] = useState<KimiPageAgentContext | null>(
     () => readKimiPageAgentContext()?.context ?? null,
   );
-  const [kimiInstruction, setKimiInstruction] = useState<string | undefined>();
   const [kimiInjectedText, setKimiInjectedText] = useState<{
     id: string;
     text: string;
@@ -474,38 +472,6 @@ function SessionPageContent({
   };
   kimiSendRef.current = handleSend;
 
-  const buildCurrentKimiPrompt = useCallback(
-    (instruction?: string) => {
-      if (!kimiContext) return null;
-      return buildKimiPageAgentPrompt(
-        kimiContext,
-        instruction ?? kimiInstruction,
-      );
-    },
-    [kimiContext, kimiInstruction],
-  );
-
-  const requestKimiContext = useCallback(() => {
-    postKimiPageAgentMessage({ type: "YEP_KPA_REQUEST_CONTEXT" });
-  }, []);
-
-  const requestKimiElementSelection = useCallback(() => {
-    postKimiPageAgentMessage({ type: "YEP_KPA_START_PICKER" });
-  }, []);
-
-  const insertKimiPrompt = useCallback(() => {
-    const prompt = buildCurrentKimiPrompt();
-    if (!prompt) return;
-    setKimiInjectedText({ id: generateUUID(), text: prompt });
-  }, [buildCurrentKimiPrompt]);
-
-  const sendKimiPrompt = useCallback(() => {
-    const prompt = buildCurrentKimiPrompt();
-    if (!prompt) return;
-    void kimiSendRef.current?.(prompt);
-    postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
-  }, [buildCurrentKimiPrompt]);
-
   useEffect(() => {
     if (!kimiMode) return;
 
@@ -559,7 +525,6 @@ function SessionPageContent({
 
       writeKimiPageAgentContext(nextContext);
       setKimiContext(nextContext);
-      setKimiInstruction(nextInstruction);
 
       const summary = getKimiContextSummary(nextContext);
       postKimiPageAgentMessage({
@@ -1283,17 +1248,6 @@ function SessionPageContent({
             className={`session-connection-bar session-connection-${sessionConnectionStatus}`}
           />
           <div className="session-input-inner">
-            {kimiMode && (
-              <KimiPageAgentPanel
-                context={kimiContext}
-                onSelectElement={requestKimiElementSelection}
-                onRefreshContext={requestKimiContext}
-                onInsertPrompt={insertKimiPrompt}
-                onSendPrompt={sendKimiPrompt}
-                disabled={status.owner === "external"}
-              />
-            )}
-
             {/* User question panel */}
             {pendingInputRequest &&
               pendingInputRequest.sessionId === actualSessionId &&
