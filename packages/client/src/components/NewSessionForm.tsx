@@ -95,6 +95,8 @@ export interface NewSessionFormProps {
   onInjectedTextApplied?: (id: string) => void;
   /** Transform the typed message before creating the session. */
   transformMessage?: (message: string) => string;
+  /** Called after the first message has been accepted by the server. */
+  onSessionStarted?: () => void;
 }
 
 export function NewSessionForm({
@@ -106,6 +108,7 @@ export function NewSessionForm({
   injectedText,
   onInjectedTextApplied,
   transformMessage,
+  onSessionStarted,
 }: NewSessionFormProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -465,6 +468,7 @@ export function NewSessionForm({
         processId = result.processId;
       }
 
+      onSessionStarted?.();
       // Clean up preview URLs
       for (const pf of pendingFiles) {
         if (pf.previewUrl) {

@@ -1,5 +1,7 @@
 # Aidc-pageAgent Host Mode
 
+User-facing SOP: `docs/aidc-page-agent-sop.md`.
+
 A Yep Anywhere session can run inside the Chrome extension side panel as an iframe host mode.
 The extension owns page-context capture only; the embedded app reuses its normal new
 session and existing session flows to send that context to the selected agent.
@@ -20,6 +22,8 @@ When enabled:
 - the embedded Yep page does not render its own Aidc-pageAgent picker panel; the
   outer extension owns selection and refresh controls
 - selected-page context is converted into the user message sent to the agent
+- existing-session follow-up messages are sent as typed; they do not re-append
+  the full Aidc-pageAgent execution constraints
 - the outer extension owns element selection and can open a fresh new-session iframe
 - page context includes a `page.product` classification; Alime maps to
   `https://code.alibaba-inc.com/aidc-mefe`, Xspace maps to

@@ -222,6 +222,11 @@ export function NewSessionPage() {
                     current?.id === id ? null : current,
                   );
                 }}
+                onSessionStarted={() => {
+                  if (kimiMode) {
+                    postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+                  }
+                }}
               />
             )}
           </div>

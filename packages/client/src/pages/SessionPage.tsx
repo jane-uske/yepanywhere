@@ -351,10 +351,7 @@ function SessionPageContent({
   });
 
   const handleSend = async (text: string) => {
-    const outgoingText =
-      kimiMode && kimiContext
-        ? buildKimiPageAgentPrompt(kimiContext, text)
-        : text;
+    const outgoingText = text;
     // Add to pending queue and get tempId to pass to server
     const tempId = addPendingMessage(outgoingText);
     setProcessState("in-turn"); // Optimistic: show processing indicator immediately
@@ -426,6 +423,9 @@ function SessionPageContent({
       }
       // Success - clear the draft from localStorage
       draftControlsRef.current?.clearDraft();
+      if (kimiMode) {
+        postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+      }
     } catch (err) {
       console.error("Failed to send:", err);
 
@@ -548,10 +548,7 @@ function SessionPageContent({
   }, [kimiMode]);
 
   const handleQueue = async (text: string) => {
-    const outgoingText =
-      kimiMode && kimiContext
-        ? buildKimiPageAgentPrompt(kimiContext, text)
-        : text;
+    const outgoingText = text;
     const tempId = addPendingMessage(outgoingText);
     setScrollTrigger((prev) => prev + 1);
 
@@ -587,6 +584,9 @@ function SessionPageContent({
       );
       removePendingMessage(tempId);
       draftControlsRef.current?.clearDraft();
+      if (kimiMode) {
+        postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+      }
     } catch (err) {
       console.error("Failed to queue deferred message:", err);
       removePendingMessage(tempId);

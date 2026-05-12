@@ -264,14 +264,6 @@ function resolveProductTarget(context: KimiPageAgentContext) {
 
   const currentPage = context.page?.alime?.currentPage;
   const xspaceRouteHint = resolveXspaceRouteHint(context);
-  if (xspaceRouteHint?.routePath?.startsWith("/system/")) {
-    return {
-      key: "xspace",
-      label: "Xspace",
-      codeGroup: "https://code.alibaba-inc.com/aidc-xspace",
-    };
-  }
-
   const signal = [
     context.tab?.url,
     context.tab?.title,

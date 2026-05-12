@@ -266,7 +266,6 @@ step("Generate package.json for npm", () => {
     type: "module",
     bin: {
       "aidc-page-agent": "./dist/cli.js",
-      yepanywhere: "./dist/cli.js",
     },
     main: "./dist/index.js",
     exports: {
