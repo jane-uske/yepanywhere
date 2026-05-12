@@ -207,6 +207,13 @@
   cursor: pointer;
 }
 
+@media (max-width: 600px) {
+  .tool-row-collapsed-preview {
+    margin-left: 16px;
+    max-width: calc(100% - 16px);
+  }
+}
+
 /* Expanded content area */
 .tool-row-content {
   margin-left: 24px;

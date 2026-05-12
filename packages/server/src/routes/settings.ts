@@ -5,6 +5,7 @@
 import {
   ALL_PERMISSION_MODES,
   ALL_PROVIDERS,
+  type CodexServiceTier,
   type NewSessionDefaults,
   type PermissionMode,
   type ProviderName,
@@ -144,6 +145,21 @@ function parseNewSessionDefaults(
         return null;
       }
       parsed.thinking = input.thinking as ThinkingOption;
+    }
+  }
+
+  if ("serviceTier" in input) {
+    if (
+      input.serviceTier !== undefined &&
+      input.serviceTier !== null &&
+      input.serviceTier !== "" &&
+      input.serviceTier !== "default" &&
+      input.serviceTier !== "fast"
+    ) {
+      return null;
+    }
+    if (typeof input.serviceTier === "string" && input.serviceTier.length > 0) {
+      parsed.serviceTier = input.serviceTier as CodexServiceTier;
     }
   }
 

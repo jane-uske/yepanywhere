@@ -3,6 +3,7 @@ import type { ZodError } from "zod";
 import { useSchemaValidationContext } from "../../../contexts/SchemaValidationContext";
 import { useSessionMetadata } from "../../../contexts/SessionMetadataContext";
 import { useExpandedDiff } from "../../../hooks/useExpandedDiff";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import {
   classifyToolError,
   getErrorClassSuffix,
@@ -94,6 +95,25 @@ function computeChangeSummary(structuredPatch: PatchHunk[]): string | null {
     return `Removed ${deletions} line${deletions !== 1 ? "s" : ""}`;
   }
   return null;
+}
+
+function countPatchLines(structuredPatch: PatchHunk[]): {
+  additions: number;
+  deletions: number;
+} {
+  return structuredPatch
+    .flatMap((h) => h.lines)
+    .reduce(
+      (counts, line) => {
+        if (line.startsWith("+")) {
+          counts.additions += 1;
+        } else if (line.startsWith("-")) {
+          counts.deletions += 1;
+        }
+        return counts;
+      },
+      { additions: 0, deletions: 0 },
+    );
 }
 
 function truncateByLines(
@@ -247,6 +267,38 @@ function RawPatchModalContent({ rawPatch }: { rawPatch: string }) {
         <code>{rawPatch}</code>
       </pre>
     </div>
+  );
+}
+
+function MobileDiffPreviewButton({
+  label,
+  structuredPatch,
+  onClick,
+}: {
+  label: string;
+  structuredPatch?: PatchHunk[];
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const counts = structuredPatch?.length
+    ? countPatchLines(structuredPatch)
+    : null;
+
+  return (
+    <button type="button" className="edit-mobile-diff-button" onClick={onClick}>
+      <span className="edit-mobile-diff-title">{label}</span>
+      {counts && (
+        <span className="edit-mobile-diff-counts">
+          {counts.additions > 0 && (
+            <span className="edit-mobile-diff-added">+{counts.additions}</span>
+          )}
+          {counts.deletions > 0 && (
+            <span className="edit-mobile-diff-removed">
+              -{counts.deletions}
+            </span>
+          )}
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -427,6 +479,7 @@ function EditCollapsedPreview({
   const [validationErrors, setValidationErrors] = useState<ZodError | null>(
     null,
   );
+  const isMobile = useMediaQuery("(max-width: 600px)");
 
   useEffect(() => {
     if (enabled && result) {
@@ -525,37 +578,47 @@ function EditCollapsedPreview({
               {classification.cleanedMessage}
             </span>
           ) : null}
-          {hasProposedDiff && (
-            <div
-              className={`diff-view-container ${proposedDiffTruncated ? "truncated" : ""}`}
-            >
-              <div className="diff-view">
-                {input._diffHtml ? (
-                  <HighlightedDiff
-                    diffHtml={input._diffHtml}
-                    truncateLines={
-                      proposedDiffTruncated ? MAX_VISIBLE_LINES : undefined
-                    }
-                  />
-                ) : (
-                  <DiffLines lines={proposedDiffLines} />
+          {hasProposedDiff &&
+            (isMobile ? (
+              <MobileDiffPreviewButton
+                label="View proposed diff"
+                structuredPatch={input._structuredPatch}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsModalOpen(true);
+                }}
+              />
+            ) : (
+              <div
+                className={`diff-view-container ${proposedDiffTruncated ? "truncated" : ""}`}
+              >
+                <div className="diff-view">
+                  {input._diffHtml ? (
+                    <HighlightedDiff
+                      diffHtml={input._diffHtml}
+                      truncateLines={
+                        proposedDiffTruncated ? MAX_VISIBLE_LINES : undefined
+                      }
+                    />
+                  ) : (
+                    <DiffLines lines={proposedDiffLines} />
+                  )}
+                </div>
+                {proposedDiffTruncated && <div className="diff-fade-overlay" />}
+                {proposedDiffTruncated && (
+                  <button
+                    type="button"
+                    className="diff-expand-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    Show full diff
+                  </button>
                 )}
               </div>
-              {proposedDiffTruncated && <div className="diff-fade-overlay" />}
-            </div>
-          )}
-          {hasProposedDiff && proposedDiffTruncated && (
-            <button
-              type="button"
-              className="diff-expand-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsModalOpen(true);
-              }}
-            >
-              Show full diff
-            </button>
-          )}
+            ))}
         </div>
         {isModalOpen && hasProposedDiff && (
           <Modal
@@ -593,21 +656,33 @@ function EditCollapsedPreview({
             {showValidationWarning && validationErrors && (
               <SchemaWarning toolName="Edit" errors={validationErrors} />
             )}
-            <RawPatchPreview
-              rawPatch={rawPatch}
-              truncateLines={MAX_VISIBLE_LINES}
-            />
-            {rawPatchPreview.truncated && (
-              <button
-                type="button"
-                className="diff-expand-button"
+            {isMobile ? (
+              <MobileDiffPreviewButton
+                label="View patch"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsModalOpen(true);
                 }}
-              >
-                Show full patch
-              </button>
+              />
+            ) : (
+              <>
+                <RawPatchPreview
+                  rawPatch={rawPatch}
+                  truncateLines={MAX_VISIBLE_LINES}
+                />
+                {rawPatchPreview.truncated && (
+                  <button
+                    type="button"
+                    className="diff-expand-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsModalOpen(true);
+                    }}
+                  >
+                    Show full patch
+                  </button>
+                )}
+              </>
             )}
           </div>
           {isModalOpen && (
@@ -641,29 +716,37 @@ function EditCollapsedPreview({
         {showValidationWarning && validationErrors && (
           <SchemaWarning toolName="Edit" errors={validationErrors} />
         )}
-        <div
-          className={`diff-view-container ${isTruncated ? "truncated" : ""}`}
-        >
-          <div className="diff-view">
-            {diffHtml ? (
-              <HighlightedDiff
-                diffHtml={diffHtml}
-                truncateLines={isTruncated ? MAX_VISIBLE_LINES : undefined}
-              />
-            ) : (
-              <DiffLines lines={diffLines} />
+        {isMobile ? (
+          <MobileDiffPreviewButton
+            label="View diff"
+            structuredPatch={structuredPatch}
+            onClick={handleClick}
+          />
+        ) : (
+          <div
+            className={`diff-view-container ${isTruncated ? "truncated" : ""}`}
+          >
+            <div className="diff-view">
+              {diffHtml ? (
+                <HighlightedDiff
+                  diffHtml={diffHtml}
+                  truncateLines={isTruncated ? MAX_VISIBLE_LINES : undefined}
+                />
+              ) : (
+                <DiffLines lines={diffLines} />
+              )}
+            </div>
+            {isTruncated && <div className="diff-fade-overlay" />}
+            {isTruncated && (
+              <button
+                type="button"
+                className="diff-expand-button"
+                onClick={handleClick}
+              >
+                Show full diff
+              </button>
             )}
           </div>
-          {isTruncated && <div className="diff-fade-overlay" />}
-        </div>
-        {isTruncated && (
-          <button
-            type="button"
-            className="diff-expand-button"
-            onClick={handleClick}
-          >
-            Show full diff
-          </button>
         )}
       </div>
       {isModalOpen && (

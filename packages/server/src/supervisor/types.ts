@@ -1,5 +1,6 @@
 import type {
   AgentActivity,
+  CodexServiceTier,
   ContextUsage,
   EffortLevel,
   InputRequest,
@@ -198,6 +199,8 @@ export interface ProcessInfo {
   thinking?: ThinkingConfig;
   /** Effort level for response quality (undefined = SDK default) */
   effort?: EffortLevel;
+  /** Codex service tier. "fast" is separate from reasoning effort. */
+  serviceTier?: CodexServiceTier;
   /** Model used for this session (e.g., "claude-opus-4-5-20251101") */
   model?: string;
   /** Context window usage from the last assistant message */
@@ -234,6 +237,8 @@ export interface ProcessOptions {
   thinking?: ThinkingConfig;
   /** Effort level for response quality (undefined = SDK default) */
   effort?: EffortLevel;
+  /** Codex service tier. "fast" is separate from reasoning effort. */
+  serviceTier?: CodexServiceTier;
   /** Model used for this session (e.g., "claude-opus-4-5-20251101") */
   model?: string;
   /** SSH host for remote execution (undefined = local) */

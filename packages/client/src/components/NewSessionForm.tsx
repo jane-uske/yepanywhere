@@ -20,6 +20,7 @@ import { useToastContext } from "../contexts/ToastContext";
 import { useConnection } from "../hooks/useConnection";
 import { useDraftPersistence } from "../hooks/useDraftPersistence";
 import {
+  getCodexServiceTier,
   getModelSetting,
   getThinkingSetting,
   useModelSettings,
@@ -125,8 +126,13 @@ export function NewSessionForm({
   const hasInitializedDefaultsRef = useRef(false);
 
   // Thinking toggle state
-  const { thinkingMode, cycleThinkingMode, thinkingLevel, setThinkingSetting } =
-    useModelSettings();
+  const {
+    thinkingMode,
+    cycleThinkingMode,
+    thinkingLevel,
+    setCodexServiceTier,
+    setThinkingSetting,
+  } = useModelSettings();
 
   // Connection for uploads (uses WebSocket when enabled)
   const connection = useConnection();
@@ -208,10 +214,14 @@ export function NewSessionForm({
     if (savedDefaults?.thinking) {
       setThinkingSetting(savedDefaults.thinking);
     }
+    if (savedDefaults?.serviceTier) {
+      setCodexServiceTier(savedDefaults.serviceTier);
+    }
   }, [
     availableProviders,
     providers,
     providersLoading,
+    setCodexServiceTier,
     setThinkingSetting,
     settings,
     settingsLoading,
@@ -331,6 +341,7 @@ export function NewSessionForm({
         model: selectedModel ?? undefined,
         permissionMode: mode,
         thinking: getThinkingSetting(),
+        serviceTier: getCodexServiceTier(),
       });
       showToast(t("newSessionDefaultsSaved"), "success");
     } catch (err) {
@@ -382,6 +393,7 @@ export function NewSessionForm({
         mode,
         model: selectedModel ?? undefined,
         thinking,
+        serviceTier: getCodexServiceTier(),
         provider: selectedProvider ?? undefined,
         executor: selectedExecutor ?? undefined,
       };
@@ -433,6 +445,7 @@ export function NewSessionForm({
           uploadedFiles.length > 0 ? uploadedFiles : undefined,
           undefined, // tempId
           thinking, // Pass the captured thinking setting to avoid process restart
+          getCodexServiceTier(),
         );
       } else {
         // No files - use single-step flow for efficiency

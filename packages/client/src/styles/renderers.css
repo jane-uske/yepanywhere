@@ -1014,6 +1014,10 @@ details[open] .collapsible__icon {
   padding: 0.5rem;
 }
 
+.edit-mobile-diff-button {
+  display: none;
+}
+
 /* ==========================================================================
    Diff View
    ========================================================================== */
@@ -2768,6 +2772,52 @@ details[open] .collapsible__icon {
   .edit-result,
   .edit-collapsed-preview {
     gap: 0.25rem;
+  }
+
+  .edit-mobile-diff-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    min-height: 2rem;
+    padding: 0.375rem 0.5rem;
+    background: var(--bg-code);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .edit-mobile-diff-button:active {
+    background: var(--bg-hover);
+  }
+
+  .edit-mobile-diff-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .edit-mobile-diff-counts {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-shrink: 0;
+    font-family: "SF Mono", Monaco, monospace;
+    font-size: var(--font-size-xs);
+  }
+
+  .edit-mobile-diff-added {
+    color: var(--success-color);
+  }
+
+  .edit-mobile-diff-removed {
+    color: var(--error-color);
   }
 
   .edit-change-summary {

@@ -11,6 +11,7 @@ import { ProviderBadge } from "../components/ProviderBadge";
 import { QuestionAnswerPanel } from "../components/QuestionAnswerPanel";
 import { RecentSessionsDropdown } from "../components/RecentSessionsDropdown";
 import { SessionMenu } from "../components/SessionMenu";
+import { ThinkingSwitchModal } from "../components/ThinkingSwitchModal";
 import { ToolApprovalPanel } from "../components/ToolApprovalPanel";
 import { AgentContentProvider } from "../contexts/AgentContentContext";
 import { SessionMetadataProvider } from "../contexts/SessionMetadataContext";
@@ -25,7 +26,13 @@ import { useDeveloperMode } from "../hooks/useDeveloperMode";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import type { DraftControls } from "../hooks/useDraftPersistence";
 import { useEngagementTracking } from "../hooks/useEngagementTracking";
-import { getModelSetting, getThinkingSetting } from "../hooks/useModelSettings";
+import {
+  getCodexServiceTier,
+  getModelSetting,
+  getThinkingSetting,
+  saveThinkingSetting,
+  toggleCodexFastModeSetting,
+} from "../hooks/useModelSettings";
 import { useProject } from "../hooks/useProjects";
 import { useProviders } from "../hooks/useProviders";
 import { recordSessionVisit } from "../hooks/useRecentSessions";
@@ -297,6 +304,7 @@ function SessionPageContent({
 
   // Model switch modal state
   const [showModelSwitchModal, setShowModelSwitchModal] = useState(false);
+  const [showThinkingSwitchModal, setShowThinkingSwitchModal] = useState(false);
 
   // Track user engagement to mark session as "seen"
   // Only enabled when not in external session (we own or it's idle)
@@ -363,6 +371,7 @@ function SessionPageContent({
         // otherwise fall back to user's model preference for new Claude sessions
         const model = session?.model ?? getModelSetting();
         const thinking = getThinkingSetting();
+        const serviceTier = getCodexServiceTier();
         // Use effectiveProvider to ensure correct provider even if session data hasn't loaded
         // effectiveProvider = session?.provider ?? initialProvider (from navigation state)
         const result = await api.resumeSession(
@@ -373,6 +382,7 @@ function SessionPageContent({
             mode: permissionMode,
             model,
             thinking,
+            serviceTier,
             provider: effectiveProvider,
             executor: session?.executor,
           },
@@ -384,6 +394,7 @@ function SessionPageContent({
       } else {
         // Queue to existing process with current permission mode and thinking setting
         const thinking = getThinkingSetting();
+        const serviceTier = getCodexServiceTier();
         const result = await api.queueMessage(
           sessionId,
           text,
@@ -391,6 +402,7 @@ function SessionPageContent({
           currentAttachments.length > 0 ? currentAttachments : undefined,
           tempId,
           thinking,
+          serviceTier,
         );
         // If process was restarted due to thinking mode change, reconnect stream
         if (result.restarted && result.processId) {
@@ -412,6 +424,7 @@ function SessionPageContent({
         try {
           const model = session?.model ?? getModelSetting();
           const thinking = getThinkingSetting();
+          const serviceTier = getCodexServiceTier();
           const result = await api.resumeSession(
             projectId,
             sessionId,
@@ -420,6 +433,7 @@ function SessionPageContent({
               mode: permissionMode,
               model,
               thinking,
+              serviceTier,
               provider: effectiveProvider,
               executor: session?.executor,
             },
@@ -470,6 +484,7 @@ function SessionPageContent({
 
     try {
       const thinking = getThinkingSetting();
+      const serviceTier = getCodexServiceTier();
       await api.queueMessage(
         sessionId,
         text,
@@ -477,6 +492,7 @@ function SessionPageContent({
         currentAttachments.length > 0 ? currentAttachments : undefined,
         tempId,
         thinking,
+        serviceTier,
         true, // deferred
       );
       removePendingMessage(tempId);
@@ -497,6 +513,14 @@ function SessionPageContent({
       showToast(t("sessionSwitchedModel", { model }), "success");
     },
     [setSessionModel, showToast, t],
+  );
+
+  const handleThinkingChanged = useCallback(
+    (thinking: ReturnType<typeof getThinkingSetting>) => {
+      saveThinkingSetting(thinking);
+      showToast(`Thinking: ${thinking.replace("on:", "")}`, "success");
+    },
+    [showToast],
   );
 
   const activeProcessId = status.owner === "self" ? status.processId : null;
@@ -524,6 +548,18 @@ function SessionPageContent({
         setShowModelSwitchModal(true);
         return true;
       }
+      if (command === "think") {
+        setShowThinkingSwitchModal(true);
+        return true;
+      }
+      if (command === "fast") {
+        const nextTier = toggleCodexFastModeSetting();
+        showToast(
+          `Fast mode: ${nextTier === "fast" ? "on" : "off"}`,
+          "success",
+        );
+        return true;
+      }
       if (command === "status") {
         setShowProcessInfoModal(true);
         return true;
@@ -539,7 +575,7 @@ function SessionPageContent({
         return true;
       }
       if (command === "help") {
-        showToast("/model /status /stop /new /help", "info");
+        showToast("/model /think /fast /status /stop /new /help", "info");
         return true;
       }
       return false;
@@ -1095,6 +1131,14 @@ function SessionPageContent({
               onClose={() => setShowModelSwitchModal(false)}
             />
           )}
+
+        {showThinkingSwitchModal && (
+          <ThinkingSwitchModal
+            currentThinking={getThinkingSetting()}
+            onThinkingChanged={handleThinkingChanged}
+            onClose={() => setShowThinkingSwitchModal(false)}
+          />
+        )}
 
         <main className="session-messages">
           {loading ? (

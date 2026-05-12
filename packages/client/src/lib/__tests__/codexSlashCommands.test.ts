@@ -8,6 +8,8 @@ describe("mergeCodexSlashCommands", () => {
   it("adds the practical client-side Codex commands without duplicating SDK commands", () => {
     expect(mergeCodexSlashCommands(["model", "custom"])).toEqual([
       "model",
+      "think",
+      "fast",
       "status",
       "stop",
       "new",
@@ -19,6 +21,8 @@ describe("mergeCodexSlashCommands", () => {
   it("shows client-side Codex commands for idle sessions", () => {
     expect(getCodexSlashCommandsForSession("codex", "none", [])).toEqual([
       "model",
+      "think",
+      "fast",
       "status",
       "stop",
       "new",

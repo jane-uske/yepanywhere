@@ -994,6 +994,15 @@ export class CodexProvider implements AgentProvider {
     });
   }
 
+  private buildThreadConfig(
+    options: StartSessionOptions,
+  ): Record<string, string> | null {
+    if (options.serviceTier === "fast") {
+      return { service_tier: "fast" };
+    }
+    return null;
+  }
+
   /**
    * Start a new Codex session.
    */
@@ -1109,6 +1118,7 @@ export class CodexProvider implements AgentProvider {
       const policy = this.mapPermissionModeToThreadPolicy(
         options.permissionMode,
       );
+      const threadConfig = this.buildThreadConfig(options);
 
       const threadResumeParams: ThreadResumeParams = {
         threadId: options.resumeSessionId ?? sessionId,
@@ -1116,12 +1126,14 @@ export class CodexProvider implements AgentProvider {
         cwd: options.cwd,
         approvalPolicy: policy.approvalPolicy,
         sandbox: policy.sandbox,
+        config: threadConfig,
       };
       const threadStartParams: ThreadStartParams = {
         model: options.model ?? null,
         cwd: options.cwd,
         approvalPolicy: policy.approvalPolicy,
         sandbox: policy.sandbox,
+        config: threadConfig,
         experimentalRawEvents: false,
       };
       const threadResult: ThreadResumeResponse | ThreadStartResponse =
@@ -1148,6 +1160,7 @@ export class CodexProvider implements AgentProvider {
             sandbox: CODEX_POLICY_OVERRIDES.sandbox,
           },
           model: options.model ?? null,
+          serviceTier: options.serviceTier ?? "default",
         },
         "Started Codex app-server session thread",
       );

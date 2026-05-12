@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type {
+  CodexServiceTier,
   EffortLevel,
   ModelInfo,
   PermissionRules,
@@ -138,6 +139,8 @@ export class Process {
   private _thinking: ThinkingConfig | undefined;
   /** Effort level for response quality */
   private _effort: EffortLevel | undefined;
+  /** Codex service tier. */
+  readonly serviceTier: CodexServiceTier | undefined;
 
   /** Function to change max thinking tokens at runtime (SDK 0.2.7+) */
   private setMaxThinkingTokensFn:
@@ -211,6 +214,7 @@ export class Process {
     this.executor = options.executor;
     this._thinking = options.thinking;
     this._effort = options.effort;
+    this.serviceTier = options.serviceTier;
     this.setMaxThinkingTokensFn = options.setMaxThinkingTokensFn ?? null;
     this.interruptFn = options.interruptFn ?? null;
     this.steerFn = options.steerFn ?? null;
@@ -713,6 +717,7 @@ export class Process {
       model: this._resolvedModel ?? this.model,
       thinking: this._thinking,
       effort: this._effort,
+      serviceTier: this.serviceTier,
       executor: this.executor,
       pid: this.pid,
     };

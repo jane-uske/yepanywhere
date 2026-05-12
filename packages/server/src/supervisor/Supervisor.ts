@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  type CodexServiceTier,
   type EffortLevel,
   type PermissionRules,
   type ProviderName,
@@ -74,6 +75,8 @@ export interface ModelSettings {
   thinking?: ThinkingConfig;
   /** Effort level for response quality. undefined = SDK default */
   effort?: EffortLevel;
+  /** Codex service tier. "fast" is separate from reasoning effort */
+  serviceTier?: CodexServiceTier;
   /** Provider to use for this session. undefined = use default (Claude) */
   providerName?: ProviderName;
   /** SSH host for remote execution (undefined = local) */
@@ -501,6 +504,7 @@ export class Supervisor {
       model: modelSettings?.model,
       thinking: modelSettings?.thinking,
       effort: modelSettings?.effort,
+      serviceTier: modelSettings?.serviceTier,
       executor: modelSettings?.executor,
       permissions: modelSettings?.permissions,
     };
@@ -552,6 +556,7 @@ export class Supervisor {
       model: modelSettings?.model,
       thinking: modelSettings?.thinking,
       effort: modelSettings?.effort,
+      serviceTier: modelSettings?.serviceTier,
       executor: modelSettings?.executor,
       remoteEnv: modelSettings?.remoteEnv,
       globalInstructions: modelSettings?.globalInstructions,
@@ -600,6 +605,7 @@ export class Supervisor {
       model: modelSettings?.model,
       thinking: modelSettings?.thinking,
       effort: modelSettings?.effort,
+      serviceTier: modelSettings?.serviceTier,
       executor: modelSettings?.executor,
       permissions: modelSettings?.permissions,
     };
@@ -653,6 +659,7 @@ export class Supervisor {
       model: modelSettings?.model,
       thinking: modelSettings?.thinking,
       effort: modelSettings?.effort,
+      serviceTier: modelSettings?.serviceTier,
       executor: modelSettings?.executor,
       remoteEnv: modelSettings?.remoteEnv,
       globalInstructions: modelSettings?.globalInstructions,
@@ -700,6 +707,7 @@ export class Supervisor {
       model: modelSettings?.model,
       thinking: modelSettings?.thinking,
       effort: modelSettings?.effort,
+      serviceTier: modelSettings?.serviceTier,
       executor: modelSettings?.executor,
       permissions: modelSettings?.permissions,
     };
@@ -785,11 +793,14 @@ export class Supervisor {
             (modelSettings?.thinking?.type ?? undefined);
           const effortChanged =
             existingProcess.effort !== modelSettings?.effort;
+          const serviceTierChanged =
+            existingProcess.serviceTier !== modelSettings?.serviceTier;
 
-          if (thinkingChanged || effortChanged) {
+          if (thinkingChanged || effortChanged || serviceTierChanged) {
             if (
               thinkingChanged &&
               !effortChanged &&
+              !serviceTierChanged &&
               existingProcess.supportsThinkingModeChange
             ) {
               // Toggle adaptive/disabled dynamically via deprecated API
@@ -824,10 +835,12 @@ export class Supervisor {
                   processId: existingProcess.id,
                   oldThinking: existingProcess.thinking?.type,
                   oldEffort: existingProcess.effort,
+                  oldServiceTier: existingProcess.serviceTier,
                   newThinking: modelSettings?.thinking?.type,
                   newEffort: modelSettings?.effort,
+                  newServiceTier: modelSettings?.serviceTier,
                 },
-                "Thinking/effort changed, restarting process",
+                "Thinking/effort/service tier changed, restarting process",
               );
               await existingProcess.abort();
               this.unregisterProcess(existingProcess);
@@ -979,11 +992,14 @@ export class Supervisor {
     const thinkingChanged =
       process.thinking?.type !== (modelSettings?.thinking?.type ?? undefined);
     const effortChanged = process.effort !== modelSettings?.effort;
+    const serviceTierChanged =
+      process.serviceTier !== modelSettings?.serviceTier;
 
-    if (thinkingChanged || effortChanged) {
+    if (thinkingChanged || effortChanged || serviceTierChanged) {
       if (
         thinkingChanged &&
         !effortChanged &&
+        !serviceTierChanged &&
         process.supportsThinkingModeChange
       ) {
         // Toggle thinking dynamically via deprecated API (works for auto↔off)
@@ -1017,10 +1033,12 @@ export class Supervisor {
             processId: process.id,
             oldThinking: process.thinking?.type,
             oldEffort: process.effort,
+            oldServiceTier: process.serviceTier,
             newThinking: modelSettings?.thinking?.type,
             newEffort: modelSettings?.effort,
+            newServiceTier: modelSettings?.serviceTier,
           },
-          "Thinking/effort changed on queue, restarting process",
+          "Thinking/effort/service tier changed on queue, restarting process",
         );
 
         await process.abort();

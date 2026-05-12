@@ -23,6 +23,7 @@ export type {
   SlashCommand,
   PermissionMode,
   NewSessionDefaults,
+  CodexServiceTier,
   ModelOption,
   ThinkingMode,
   ThinkingOption,

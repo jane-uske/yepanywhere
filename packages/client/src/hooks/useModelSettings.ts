@@ -1,10 +1,12 @@
 import type {
+  CodexServiceTier,
   EffortLevel,
   ModelOption,
   ThinkingMode,
   ThinkingOption,
 } from "@yep-anywhere/shared";
 import { useCallback, useState } from "react";
+import { useEffect } from "react";
 import {
   LEGACY_KEYS,
   getServerScoped,
@@ -14,7 +16,21 @@ import {
 /**
  * Re-export shared types for convenience.
  */
-export type { EffortLevel, ModelOption, ThinkingMode, ThinkingOption };
+export type {
+  CodexServiceTier,
+  EffortLevel,
+  ModelOption,
+  ThinkingMode,
+  ThinkingOption,
+};
+
+const MODEL_SETTINGS_CHANGED_EVENT = "yep-anywhere:model-settings-changed";
+
+function notifyModelSettingsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(MODEL_SETTINGS_CHANGED_EVENT));
+  }
+}
 
 export const MODEL_OPTIONS: { value: ModelOption; label: string }[] = [
   { value: "default", label: "Default" },
@@ -48,6 +64,7 @@ function loadModel(): ModelOption {
 
 function saveModel(model: ModelOption) {
   setServerScoped("model", model, LEGACY_KEYS.model);
+  notifyModelSettingsChanged();
 }
 
 /** Migration map from old thinking levels to effort levels */
@@ -76,6 +93,7 @@ function loadEffortLevel(): EffortLevel {
 
 function saveEffortLevel(level: EffortLevel) {
   setServerScoped("thinkingLevel", level, LEGACY_KEYS.thinkingLevel);
+  notifyModelSettingsChanged();
 }
 
 const THINKING_MODES: ThinkingMode[] = ["off", "auto", "on"];
@@ -101,6 +119,20 @@ function loadThinkingMode(): ThinkingMode {
 
 function saveThinkingMode(mode: ThinkingMode) {
   setServerScoped("thinkingMode", mode, LEGACY_KEYS.thinkingMode);
+  notifyModelSettingsChanged();
+}
+
+function loadCodexServiceTier(): CodexServiceTier {
+  const stored = getServerScoped(
+    "codexServiceTier",
+    LEGACY_KEYS.codexServiceTier,
+  );
+  return stored === "fast" ? "fast" : "default";
+}
+
+function saveCodexServiceTier(tier: CodexServiceTier) {
+  setServerScoped("codexServiceTier", tier, LEGACY_KEYS.codexServiceTier);
+  notifyModelSettingsChanged();
 }
 
 function loadVoiceInputEnabled(): boolean {
@@ -118,6 +150,7 @@ function saveVoiceInputEnabled(enabled: boolean) {
     enabled ? "true" : "false",
     LEGACY_KEYS.voiceInputEnabled,
   );
+  notifyModelSettingsChanged();
 }
 
 /**
@@ -129,9 +162,31 @@ export function useModelSettings() {
     useState<EffortLevel>(loadEffortLevel);
   const [thinkingMode, setThinkingModeState] =
     useState<ThinkingMode>(loadThinkingMode);
+  const [codexServiceTier, setCodexServiceTierState] =
+    useState<CodexServiceTier>(loadCodexServiceTier);
   const [voiceInputEnabled, setVoiceInputEnabledState] = useState<boolean>(
     loadVoiceInputEnabled,
   );
+
+  useEffect(() => {
+    const handleSettingsChanged = () => {
+      setModelState(loadModel());
+      setEffortLevelState(loadEffortLevel());
+      setThinkingModeState(loadThinkingMode());
+      setCodexServiceTierState(loadCodexServiceTier());
+      setVoiceInputEnabledState(loadVoiceInputEnabled());
+    };
+
+    window.addEventListener(
+      MODEL_SETTINGS_CHANGED_EVENT,
+      handleSettingsChanged,
+    );
+    return () =>
+      window.removeEventListener(
+        MODEL_SETTINGS_CHANGED_EVENT,
+        handleSettingsChanged,
+      );
+  }, []);
 
   const setModel = useCallback((m: ModelOption) => {
     setModelState(m);
@@ -170,6 +225,18 @@ export function useModelSettings() {
     saveThinkingMode(next);
   }, [thinkingMode]);
 
+  const setCodexServiceTier = useCallback((tier: CodexServiceTier) => {
+    setCodexServiceTierState(tier);
+    saveCodexServiceTier(tier);
+  }, []);
+
+  const toggleCodexFastMode = useCallback(() => {
+    const next = codexServiceTier === "fast" ? "default" : "fast";
+    setCodexServiceTierState(next);
+    saveCodexServiceTier(next);
+    return next;
+  }, [codexServiceTier]);
+
   const setVoiceInputEnabled = useCallback((enabled: boolean) => {
     setVoiceInputEnabledState(enabled);
     saveVoiceInputEnabled(enabled);
@@ -193,6 +260,9 @@ export function useModelSettings() {
     setThinkingMode,
     setThinkingSetting,
     cycleThinkingMode,
+    codexServiceTier,
+    setCodexServiceTier,
+    toggleCodexFastMode,
     voiceInputEnabled,
     setVoiceInputEnabled,
     toggleVoiceInput,
@@ -224,6 +294,29 @@ export function getThinkingSetting(): ThinkingOption {
  */
 export function getThinkingMode(): ThinkingMode {
   return loadThinkingMode();
+}
+
+/**
+ * Get Codex service tier without React state.
+ */
+export function getCodexServiceTier(): CodexServiceTier {
+  return loadCodexServiceTier();
+}
+
+/**
+ * Persist Codex service tier without React state.
+ */
+export function saveCodexServiceTierSetting(tier: CodexServiceTier): void {
+  saveCodexServiceTier(tier);
+}
+
+/**
+ * Toggle Codex fast service tier without React state.
+ */
+export function toggleCodexFastModeSetting(): CodexServiceTier {
+  const next = loadCodexServiceTier() === "fast" ? "default" : "fast";
+  saveCodexServiceTier(next);
+  return next;
 }
 
 /**
