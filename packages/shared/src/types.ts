@@ -124,6 +124,7 @@ export interface NewSessionDefaults {
   model?: string;
   permissionMode?: PermissionMode;
   thinking?: ThinkingOption;
+  serviceTier?: CodexServiceTier;
 }
 
 /**
@@ -185,6 +186,11 @@ export type ThinkingMode = "off" | "auto" | "on";
  * - EffortLevel (plain): Adaptive thinking with effort (backward compat with old clients)
  */
 export type ThinkingOption = "off" | "auto" | `on:${EffortLevel}` | EffortLevel;
+
+/**
+ * Codex service tier. "fast" is a separate Codex speed mode, not a reasoning effort.
+ */
+export type CodexServiceTier = "default" | "fast";
 
 /**
  * Thinking configuration for the SDK.

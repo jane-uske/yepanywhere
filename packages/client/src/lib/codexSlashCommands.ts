@@ -1,5 +1,7 @@
 const CUSTOM_CODEX_SLASH_COMMANDS = [
   "model",
+  "think",
+  "fast",
   "status",
   "stop",
   "new",

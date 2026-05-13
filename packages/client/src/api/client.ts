@@ -1,6 +1,7 @@
 import type {
   AgentActivity,
   BrowserProfilesResponse,
+  CodexServiceTier,
   ConnectionsResponse,
   DeviceInfo,
   EnrichedRecentEntry,
@@ -119,6 +120,7 @@ export interface SessionOptions {
   /** Model ID (e.g., "sonnet", "opus", "qwen2.5-coder:0.5b") */
   model?: string;
   thinking?: ThinkingOption;
+  serviceTier?: CodexServiceTier;
   provider?: ProviderName;
   /** SSH host alias for remote execution (undefined = local) */
   executor?: string;
@@ -445,6 +447,7 @@ export const api = {
         mode: options?.mode,
         model: options?.model,
         thinking: options?.thinking,
+        serviceTier: options?.serviceTier,
         provider: options?.provider,
         executor: options?.executor,
         attachments,
@@ -467,6 +470,7 @@ export const api = {
         mode: options?.mode,
         model: options?.model,
         thinking: options?.thinking,
+        serviceTier: options?.serviceTier,
         provider: options?.provider,
         executor: options?.executor,
       }),
@@ -491,6 +495,7 @@ export const api = {
         mode: options?.mode,
         model: options?.model,
         thinking: options?.thinking,
+        serviceTier: options?.serviceTier,
         provider: options?.provider,
         executor: options?.executor,
         attachments,
@@ -505,6 +510,7 @@ export const api = {
     attachments?: UploadedFile[],
     tempId?: string,
     thinking?: ThinkingOption,
+    serviceTier?: CodexServiceTier,
     deferred?: boolean,
   ) =>
     fetchJSON<{
@@ -520,6 +526,7 @@ export const api = {
         attachments,
         tempId,
         thinking,
+        serviceTier,
         deferred,
       }),
     }),

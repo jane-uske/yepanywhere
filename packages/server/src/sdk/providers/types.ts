@@ -1,5 +1,6 @@
 // Provider abstraction types for multi-provider support
 import type {
+  CodexServiceTier,
   ModelInfo,
   PermissionMode,
   SlashCommand,
@@ -53,6 +54,8 @@ export interface StartSessionOptions {
   thinking?: import("@yep-anywhere/shared").ThinkingConfig;
   /** Effort level for response quality (undefined = SDK default) */
   effort?: import("@yep-anywhere/shared").EffortLevel;
+  /** Codex service tier. "fast" is separate from reasoning effort. */
+  serviceTier?: CodexServiceTier;
   /** Tool approval callback */
   onToolApproval?: CanUseTool;
   /** SSH host for remote execution (undefined = local) */

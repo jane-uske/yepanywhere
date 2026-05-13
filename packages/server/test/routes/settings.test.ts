@@ -191,6 +191,7 @@ describe("Settings Routes", () => {
             model: "gpt-5.5",
             permissionMode: "bypassPermissions",
             thinking: "on:high",
+            serviceTier: "fast",
           },
         }),
       });
@@ -202,6 +203,7 @@ describe("Settings Routes", () => {
           model: "gpt-5.5",
           permissionMode: "bypassPermissions",
           thinking: "on:high",
+          serviceTier: "fast",
         },
       });
     });

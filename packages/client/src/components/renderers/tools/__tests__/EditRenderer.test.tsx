@@ -22,9 +22,28 @@ if (!editRenderer.renderCollapsedPreview) {
 }
 const renderCollapsedPreview = editRenderer.renderCollapsedPreview;
 
+function setMobileViewport(matches: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation(() => ({
+      matches,
+      media: "(max-width: 600px)",
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 describe("EditRenderer collapsed preview fallback", () => {
   afterEach(() => {
     cleanup();
+    Reflect.deleteProperty(window, "matchMedia");
+    vi.unstubAllGlobals();
   });
 
   it("renders raw patch text for completed rows when structured patch is missing", () => {
@@ -102,6 +121,36 @@ describe("EditRenderer collapsed preview fallback", () => {
     expect(screen.queryByText("Computing diff...")).toBeNull();
     expect(screen.getByText("-const x = 1;")).toBeDefined();
     expect(screen.getByText("+const x = 2;")).toBeDefined();
+  });
+
+  it("uses a compact diff entry on mobile instead of rendering inline code", () => {
+    setMobileViewport(true);
+    const input = {
+      _structuredPatch: [
+        {
+          oldStart: 1,
+          oldLines: 1,
+          newStart: 1,
+          newLines: 1,
+          lines: ["-const x = 1;", "+const x = 2;"],
+        },
+      ],
+    };
+
+    render(
+      <div>
+        {renderCollapsedPreview(
+          input as never,
+          { ok: true } as never,
+          false,
+          renderContext,
+        )}
+      </div>,
+    );
+
+    expect(screen.getByRole("button", { name: /View diff/i })).toBeDefined();
+    expect(screen.queryByText("-const x = 1;")).toBeNull();
+    expect(screen.queryByText("+const x = 2;")).toBeNull();
   });
 
   it("renders server-provided highlighted diff HTML when available", () => {

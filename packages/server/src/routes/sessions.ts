@@ -1,5 +1,6 @@
 import {
   type AgentActivity,
+  type CodexServiceTier,
   type ContextUsage,
   type ModelOption,
   type PermissionRules,
@@ -90,6 +91,27 @@ function parseOptionalExecutor(rawExecutor: unknown): {
   return { executor };
 }
 
+function parseOptionalCodexServiceTier(rawTier: unknown): {
+  serviceTier: CodexServiceTier | undefined;
+  error?: string;
+} {
+  if (
+    rawTier === undefined ||
+    rawTier === null ||
+    rawTier === "" ||
+    rawTier === "default"
+  ) {
+    return { serviceTier: undefined };
+  }
+  if (rawTier !== "default" && rawTier !== "fast") {
+    return {
+      serviceTier: undefined,
+      error: "serviceTier must be either default or fast",
+    };
+  }
+  return { serviceTier: rawTier };
+}
+
 function getProcessActivity(
   process: Process | null | undefined,
 ): AgentActivity | undefined {
@@ -148,6 +170,7 @@ interface StartSessionBody {
   mode?: PermissionMode;
   model?: ModelOption;
   thinking?: ThinkingOption;
+  serviceTier?: CodexServiceTier;
   provider?: ProviderName;
   /** Client-generated temp ID for optimistic UI tracking */
   tempId?: string;
@@ -161,6 +184,7 @@ interface CreateSessionBody {
   mode?: PermissionMode;
   model?: ModelOption;
   thinking?: ThinkingOption;
+  serviceTier?: CodexServiceTier;
   provider?: ProviderName;
   /** SSH host alias for remote execution (undefined = local) */
   executor?: string;
@@ -880,6 +904,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     if (executorError) {
       return c.json({ error: executorError }, 400);
     }
+    const { serviceTier, error: serviceTierError } =
+      parseOptionalCodexServiceTier(body.serviceTier);
+    if (serviceTierError) {
+      return c.json({ error: serviceTierError }, 400);
+    }
 
     const userMessage: UserMessage = {
       text: body.message,
@@ -917,6 +946,9 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
+        serviceTier: isCodexProviderName(body.provider)
+          ? serviceTier
+          : undefined,
         providerName: body.provider,
         executor,
         globalInstructions,
@@ -990,6 +1022,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     if (executorError) {
       return c.json({ error: executorError }, 400);
     }
+    const { serviceTier, error: serviceTierError } =
+      parseOptionalCodexServiceTier(body.serviceTier);
+    if (serviceTierError) {
+      return c.json({ error: serviceTierError }, 400);
+    }
 
     // Convert thinking option to SDK config
     const { thinking, effort } = body.thinking
@@ -1010,6 +1047,9 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
+        serviceTier: isCodexProviderName(body.provider)
+          ? serviceTier
+          : undefined,
         providerName: body.provider,
         executor,
         globalInstructions,
@@ -1083,6 +1123,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     const parsedBodyExecutor = parseOptionalExecutor(body.executor);
     if (parsedBodyExecutor.error) {
       return c.json({ error: parsedBodyExecutor.error }, 400);
+    }
+    const { serviceTier, error: serviceTierError } =
+      parseOptionalCodexServiceTier(body.serviceTier);
+    if (serviceTierError) {
+      return c.json({ error: serviceTierError }, 400);
     }
 
     const userMessage: UserMessage = {
@@ -1180,6 +1225,9 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
+        serviceTier: isCodexProviderName(providerName)
+          ? serviceTier
+          : undefined,
         providerName,
         executor,
         globalInstructions,
@@ -1273,6 +1321,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     if (executorError) {
       return c.json({ error: executorError }, 400);
     }
+    const { serviceTier, error: serviceTierError } =
+      parseOptionalCodexServiceTier(body.serviceTier);
+    if (serviceTierError) {
+      return c.json({ error: serviceTierError }, 400);
+    }
 
     const model =
       body.model && body.model !== "default"
@@ -1283,6 +1336,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     // If thinking mode changed, it will restart the process automatically
     const queueGlobalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
+    const providerName = metadataProvider ?? body.provider ?? process.provider;
     const result = await deps.supervisor.queueMessageToSession(
       sessionId,
       process.projectPath,
@@ -1292,7 +1346,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         model,
         thinking,
         effort,
-        providerName: metadataProvider ?? body.provider ?? process.provider,
+        serviceTier: isCodexProviderName(providerName)
+          ? serviceTier
+          : undefined,
+        providerName,
         executor:
           executor ??
           metadataExecutor.executor ??
