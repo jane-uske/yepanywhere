@@ -28,6 +28,8 @@ export function NewSessionPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get("projectId");
   const kimiMode = isKimiPageAgentMode();
+  const kimiBridgeActive =
+    kimiMode && typeof window !== "undefined" && window.parent !== window;
   const [kimiContext, setKimiContext] = useState<KimiPageAgentContext | null>(
     () => readKimiPageAgentContext()?.context ?? null,
   );
@@ -62,7 +64,7 @@ export function NewSessionPage() {
   };
 
   useEffect(() => {
-    if (!kimiMode) return;
+    if (!kimiBridgeActive) return;
 
     const postReady = () => {
       postKimiPageAgentMessage({
@@ -130,7 +132,7 @@ export function NewSessionPage() {
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [kimiMode]);
+  }, [kimiBridgeActive]);
 
   const loading = projectLoading || projectsLoading;
 
@@ -207,27 +209,38 @@ export function NewSessionPage() {
 
         <main className="page-scroll-container">
           <div className="page-content-inner">
-            {effectiveProjectId && (
-              <NewSessionForm
-                projectId={effectiveProjectId}
-                injectedText={kimiInjectedText}
-                transformMessage={
-                  kimiMode && kimiContext
-                    ? (message) =>
-                        buildKimiPageAgentPrompt(kimiContext, message)
-                    : undefined
-                }
-                onInjectedTextApplied={(id) => {
-                  setKimiInjectedText((current) =>
-                    current?.id === id ? null : current,
-                  );
-                }}
-                onSessionStarted={() => {
-                  if (kimiMode) {
-                    postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+            {effectiveProjectId && kimiBridgeActive && !kimiContext ? (
+              <div className="loading">等待 Aidc-pageAgent 页面上下文...</div>
+            ) : (
+              effectiveProjectId && (
+                <NewSessionForm
+                  projectId={effectiveProjectId}
+                  injectedText={kimiInjectedText}
+                  transformMessage={
+                    kimiBridgeActive && kimiContext
+                      ? (message) =>
+                          buildKimiPageAgentPrompt(kimiContext, message)
+                      : undefined
                   }
-                }}
-              />
+                  onInjectedTextApplied={(id) => {
+                    setKimiInjectedText((current) =>
+                      current?.id === id ? null : current,
+                    );
+                  }}
+                  onSessionStarted={() => {
+                    if (kimiBridgeActive) {
+                      postKimiPageAgentMessage({
+                        type: "YEP_KPA_PROMPT_SENT",
+                      });
+                    }
+                  }}
+                  sessionUrlSearch={
+                    kimiBridgeActive
+                      ? "?mode=kimi-page-agent&host=chrome-extension"
+                      : ""
+                  }
+                />
+              )
             )}
           </div>
         </main>

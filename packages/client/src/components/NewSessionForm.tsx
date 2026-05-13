@@ -98,6 +98,8 @@ export interface NewSessionFormProps {
   transformMessage?: (message: string) => string;
   /** Called after the first message has been accepted by the server. */
   onSessionStarted?: () => void;
+  /** Query string to append when navigating to the created session. */
+  sessionUrlSearch?: string;
 }
 
 export function NewSessionForm({
@@ -110,6 +112,7 @@ export function NewSessionForm({
   onInjectedTextApplied,
   transformMessage,
   onSessionStarted,
+  sessionUrlSearch = "",
 }: NewSessionFormProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
@@ -494,14 +497,17 @@ export function NewSessionForm({
       // without waiting for getSession to complete
       // Also pass initial message as optimistic title (session name = first message)
       // Pass model/provider so ProviderBadge can render immediately
-      navigate(`${basePath}/projects/${projectId}/sessions/${sessionId}`, {
-        state: {
-          initialStatus: { state: "owned", processId },
-          initialTitle: trimmedMessage,
-          initialModel: selectedModel,
-          initialProvider: selectedProvider,
+      navigate(
+        `${basePath}/projects/${projectId}/sessions/${sessionId}${sessionUrlSearch}`,
+        {
+          state: {
+            initialStatus: { state: "owned", processId },
+            initialTitle: trimmedMessage,
+            initialModel: selectedModel,
+            initialProvider: selectedProvider,
+          },
         },
-      });
+      );
     } catch (err) {
       console.error("Failed to start session:", err);
       draftControls.restoreFromStorage();

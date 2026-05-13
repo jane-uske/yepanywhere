@@ -47,6 +47,7 @@ import { getCodexSlashCommandsForSession } from "../lib/codexSlashCommands";
 import {
   type KimiPageAgentContext,
   type KimiPageAgentInboundMessage,
+  buildKimiPageAgentFollowupPrompt,
   buildKimiPageAgentPrompt,
   getKimiContextSummary,
   isKimiPageAgentMode,
@@ -212,6 +213,48 @@ function SessionPageContent({
     text: string;
   } | null>(null);
   const kimiSendRef = useRef<((text: string) => Promise<void>) | null>(null);
+  const consumedKimiSelectionIdRef = useRef<string | null>(null);
+
+  const buildOutgoingKimiText = useCallback(
+    (text: string) => {
+      if (!kimiMode || !kimiContext?.selection) return text;
+
+      const selectionId =
+        kimiContext.kpa?.selectionId ??
+        [
+          kimiContext.tab?.url,
+          kimiContext.selection.paths?.baseScrollPath ??
+            kimiContext.selection.paths?.selector,
+          kimiContext.selection.element?.text,
+        ]
+          .filter(Boolean)
+          .join("::");
+
+      if (!selectionId || consumedKimiSelectionIdRef.current === selectionId) {
+        return text;
+      }
+
+      return buildKimiPageAgentFollowupPrompt(kimiContext, text);
+    },
+    [kimiContext, kimiMode],
+  );
+
+  const markKimiSelectionConsumed = useCallback(() => {
+    const selectionId =
+      kimiContext?.kpa?.selectionId ??
+      [
+        kimiContext?.tab?.url,
+        kimiContext?.selection?.paths?.baseScrollPath ??
+          kimiContext?.selection?.paths?.selector,
+        kimiContext?.selection?.element?.text,
+      ]
+        .filter(Boolean)
+        .join("::");
+
+    if (selectionId) {
+      consumedKimiSelectionIdRef.current = selectionId;
+    }
+  }, [kimiContext]);
 
   // Sharing: check if configured (hidden unless sharing.json exists on server)
   const [sharingConfigured, setSharingConfigured] = useState(false);
@@ -359,7 +402,7 @@ function SessionPageContent({
   });
 
   const handleSend = async (text: string) => {
-    const outgoingText = text;
+    const outgoingText = buildOutgoingKimiText(text);
     // Add to pending queue and get tempId to pass to server
     const tempId = addPendingMessage(outgoingText);
     setProcessState("in-turn"); // Optimistic: show processing indicator immediately
@@ -436,6 +479,7 @@ function SessionPageContent({
       // Success - clear the draft from localStorage
       draftControlsRef.current?.clearDraft();
       if (kimiMode) {
+        markKimiSelectionConsumed();
         postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
       }
     } catch (err) {
@@ -562,7 +606,7 @@ function SessionPageContent({
   }, [kimiMode]);
 
   const handleQueue = async (text: string) => {
-    const outgoingText = text;
+    const outgoingText = buildOutgoingKimiText(text);
     const tempId = addPendingMessage(outgoingText);
     setScrollTrigger((prev) => prev + 1);
 
@@ -601,6 +645,7 @@ function SessionPageContent({
       removePendingMessage(tempId);
       draftControlsRef.current?.clearDraft();
       if (kimiMode) {
+        markKimiSelectionConsumed();
         postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
       }
     } catch (err) {

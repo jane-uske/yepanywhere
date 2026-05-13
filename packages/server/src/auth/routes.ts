@@ -51,6 +51,12 @@ function shouldUseSecureCookie(c: {
   }
 }
 
+function getSessionCookieSameSite(c: {
+  req: { url: string; header: (name: string) => string | undefined };
+}): "Lax" | "None" {
+  return shouldUseSecureCookie(c) ? "None" : "Lax";
+}
+
 export function createAuthRoutes(deps: AuthRoutesDeps): Hono {
   const app = new Hono();
   const { authService, authDisabled = false, desktopAuthToken } = deps;
@@ -225,7 +231,7 @@ export function createAuthRoutes(deps: AuthRoutesDeps): Hono {
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: shouldUseSecureCookie(c),
-      sameSite: "Lax",
+      sameSite: getSessionCookieSameSite(c),
       path: "/",
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });
@@ -263,7 +269,7 @@ export function createAuthRoutes(deps: AuthRoutesDeps): Hono {
     setCookie(c, SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
       secure: shouldUseSecureCookie(c),
-      sameSite: "Lax",
+      sameSite: getSessionCookieSameSite(c),
       path: "/",
       maxAge: 30 * 24 * 60 * 60, // 30 days
     });

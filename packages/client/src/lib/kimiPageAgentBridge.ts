@@ -209,9 +209,15 @@ export function buildKimiPageAgentPrompt(
   context: KimiPageAgentContext,
   instruction?: string,
 ): string {
-  const fallback = context.selection
-    ? "请基于当前选中的页面元素定位相关代码并完成修改。"
-    : "请基于当前页面上下文定位相关代码并完成修改。";
+  const taskIntent = inferKimiPageAgentTaskIntent(instruction);
+  const readonlyTask = taskIntent === "readonly";
+  const fallback = readonlyTask
+    ? context.selection
+      ? "请基于当前选中的页面元素定位相关代码并说明实现逻辑。不要修改代码。"
+      : "请基于当前页面上下文定位相关代码并说明实现逻辑。不要修改代码。"
+    : context.selection
+      ? "请基于当前选中的页面元素定位相关代码并完成修改。"
+      : "请基于当前页面上下文定位相关代码并完成修改。";
   const task = instruction?.trim() || fallback;
   const productTarget = resolveProductTarget(context);
   const xspaceRouteHint =
@@ -223,6 +229,15 @@ export function buildKimiPageAgentPrompt(
     xspaceRouteHint?.repoHint && productTarget.codeGroup
       ? `- Xspace 页面路由线索为 ${xspaceRouteHint.routePath ?? "-"}；如果是 page 路由，优先用最后一段 ${xspaceRouteHint.repoHint} 在当前 workspace 和 ${productTarget.codeGroup} 代码组做模糊检索。`
       : null;
+  const workflowConstraint = readonlyTask
+    ? "- 本次任务是只读分析：不要编辑文件、不要创建迭代、不要提交或部署；如果判断必须修改，先说明建议改法并等待确认。"
+    : "- 定位仓库后按需要通过 o2 MCP 建迭代、推进改动、提交和部署。";
+  const externalToolsConstraint = readonlyTask
+    ? "- 需要查产品文档、业务说明或规范时使用 yuque MCP；代码仓库相关操作使用 code 平台 MCP；本次不要使用 o2 创建迭代、部署或发布。"
+    : "- 需要查产品文档、业务说明或规范时使用 yuque MCP；代码仓库相关操作使用 code 平台 MCP；迭代、部署和发布流程使用 o2 MCP。";
+  const finalInstruction = readonlyTask
+    ? "请基于上述最小页面上下文定位代码并说明按钮/页面逻辑、相关文件和调用链；不要修改、提交或部署任何代码。最后说明查看位置和结论。"
+    : "请基于上述最小页面上下文定位代码并完成修改，最后说明改动和验证结果。";
 
   return [
     task,
@@ -232,8 +247,8 @@ export function buildKimiPageAgentPrompt(
     ...(xspaceRouteConstraint ? [xspaceRouteConstraint] : []),
     "- 定位仓库时先检查当前 workspace 内是否已有对应仓库；没有时，再通过 code 平台 MCP 在产品对应代码组搜索并下载/拉取。",
     "- 不要在 workspace 之外盲目扫本地目录；如果 workspace 与 code 平台结果冲突，说明选择依据。",
-    "- 定位仓库后按需要通过 o2 MCP 建迭代、推进改动、提交和部署。",
-    "- 需要查产品文档、业务说明或规范时使用 yuque MCP；代码仓库相关操作使用 code 平台 MCP；迭代、部署和发布流程使用 o2 MCP。",
+    workflowConstraint,
+    externalToolsConstraint,
     "- 不要创建额外的任务系统；如果必须偏离上述路径，先说明原因。",
     "",
     "页面上下文来自 Aidc-pageAgent 浏览器插件：",
@@ -241,8 +256,115 @@ export function buildKimiPageAgentPrompt(
     JSON.stringify(getPromptContext(context, xspaceRouteHint), null, 2),
     "```",
     "",
-    "请基于上述最小页面上下文定位代码并完成修改，最后说明改动和验证结果。",
+    finalInstruction,
   ].join("\n");
+}
+
+export function buildKimiPageAgentFollowupPrompt(
+  context: KimiPageAgentContext,
+  instruction: string,
+): string {
+  if (!context.selection) return instruction;
+
+  const productTarget = resolveProductTarget(context);
+  const xspaceRouteHint =
+    productTarget.key === "xspace" ? resolveXspaceRouteHint(context) : null;
+  const currentPage = context.page?.alime?.currentPage;
+  const element = context.selection.element;
+  const paths = context.selection.paths;
+
+  const followupContext = pickDefined({
+    product: context.page?.product
+      ? pickDefined({
+          key: context.page.product.key,
+          name: context.page.product.name,
+          codeGroup: context.page.product.codeGroup,
+        })
+      : undefined,
+    xspace: xspaceRouteHint
+      ? pickDefined({
+          routePath: xspaceRouteHint.routePath,
+          repoHint: xspaceRouteHint.repoHint,
+          searchTerms: xspaceRouteHint.searchTerms,
+        })
+      : undefined,
+    currentPage: currentPage
+      ? pickDefined({
+          title: currentPage.title,
+          path: currentPage.path,
+          app: currentPage.app,
+          subLink: currentPage.subLink,
+        })
+      : undefined,
+    selection: pickDefined({
+      element: element
+        ? pickDefined({
+            tag: element.tag,
+            id: element.id,
+            text: truncate(element.text, 180),
+            classes: element.classes?.slice(0, 8),
+            cssModuleHints: element.cssModuleHints?.slice(0, 6),
+            role: element.role,
+            ariaLabel: element.ariaLabel,
+            title: element.title,
+            placeholder: element.placeholder,
+          })
+        : undefined,
+      rect: context.selection.layout?.rect,
+      paths: pickDefined({
+        selector: paths?.selector,
+        baseScrollPath: paths?.baseScrollPath,
+        textPath: truncate(paths?.textPath, 220),
+      }),
+    }),
+  });
+
+  return [
+    instruction.trim(),
+    "",
+    "本轮 Aidc-pageAgent 新选中元素上下文（仅用于定位代码，不重复执行约束）：",
+    "```json",
+    JSON.stringify(followupContext, null, 2),
+    "```",
+  ].join("\n");
+}
+
+function inferKimiPageAgentTaskIntent(
+  instruction: string | undefined,
+): "readonly" | "modify" {
+  const text = instruction?.trim();
+  if (!text) return "modify";
+
+  const compact = text.toLowerCase().replace(/\s+/g, "");
+
+  if (
+    /(不要|不用|先别|别|无需|不需要|不必|禁止)(修改|改动|改代码|动代码|写代码|实现|提交|部署|变更|编辑|保存|落地)/.test(
+      compact,
+    ) ||
+    /(只看|仅看|只分析|仅分析|只解释|只定位|只说明|readonly|don'?tchange|donotchange|nocodechanges)/.test(
+      compact,
+    )
+  ) {
+    return "readonly";
+  }
+
+  if (
+    /(修改|改一下|改成|修复|实现|新增|删除|替换|调整|优化|落地|完成修改|提交|部署|发版|建迭代|修一下|帮我改|做一下|加上|去掉|移除|隐藏|显示|对齐|改为|改下|fix|implement|change|update|add|remove|delete|refactor|deploy)/.test(
+      compact,
+    )
+  ) {
+    return "modify";
+  }
+
+  if (
+    /(看下|看看|看一下|查下|查一下|分析|解释|说明|讲下|讲一下|梳理|了解|定位|排查|确认|判断|逻辑|为什么|怎么回事|是什么|含义|作用|入口|链路|流程|where|why|explain|analy[sz]e|inspect|investigate|understand)/.test(
+      compact,
+    )
+  ) {
+    return "readonly";
+  }
+
+  return "modify";
 }
 
 function resolveProductTarget(context: KimiPageAgentContext) {
@@ -254,10 +376,10 @@ function resolveProductTarget(context: KimiPageAgentContext) {
       codeGroup: "https://code.alibaba-inc.com/aidc-xspace",
     };
   }
-  if (declaredKey === "alime") {
+  if (declaredKey === "alime" || declaredKey === "alimebot") {
     return {
       key: "alime",
-      label: "Alime",
+      label: declaredKey === "alimebot" ? "AlimeBot" : "Alime",
       codeGroup: "https://code.alibaba-inc.com/aidc-mefe",
     };
   }
