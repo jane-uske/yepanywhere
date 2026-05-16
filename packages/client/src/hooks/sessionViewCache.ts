@@ -39,6 +39,7 @@ export interface GlobalSessionsCacheOptions {
   includeArchived?: boolean;
   starred?: boolean;
   includeStats?: boolean;
+  includeSubagents?: boolean;
 }
 
 export interface CachedGlobalSessions {
@@ -100,6 +101,7 @@ function globalSessionsKey(options: GlobalSessionsCacheOptions): string {
     includeArchived: options.includeArchived === true,
     starred: options.starred === true,
     includeStats: options.includeStats === true,
+    includeSubagents: options.includeSubagents === true,
   });
 }
 

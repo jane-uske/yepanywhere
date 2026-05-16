@@ -1,0 +1,272 @@
+/* Apple system-app visual foundation.
+   This layer intentionally avoids marketing-page scale and keeps Yep Anywhere
+   dense enough for mobile supervision workflows. */
+
+:root {
+  --apple-canvas: #f5f5f7;
+  --apple-surface: rgba(255, 255, 255, 0.92);
+  --apple-surface-solid: #ffffff;
+  --apple-surface-muted: rgba(255, 255, 255, 0.68);
+  --apple-separator: rgba(0, 0, 0, 0.08);
+  --apple-separator-strong: rgba(0, 0, 0, 0.14);
+  --apple-label: #1d1d1f;
+  --apple-secondary-label: #6e6e73;
+  --apple-tertiary-label: #86868b;
+  --apple-blue: #0066cc;
+  --apple-blue-hover: #0071e3;
+  --apple-control-fill: rgba(118, 118, 128, 0.12);
+  --apple-control-fill-hover: rgba(118, 118, 128, 0.18);
+  --apple-elevated-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 32px
+    rgba(0, 0, 0, 0.06);
+  --apple-popover-shadow: 0 18px 56px rgba(0, 0, 0, 0.18);
+  --apple-frost: blur(28px) saturate(180%);
+  --apple-radius-sm: 10px;
+  --apple-radius-md: 14px;
+  --apple-radius-lg: 22px;
+  --apple-touch-target: 44px;
+}
+
+[data-theme="dark"],
+[data-theme="verydark"] {
+  --apple-canvas: #000000;
+  --apple-surface: rgba(29, 29, 31, 0.86);
+  --apple-surface-solid: #1d1d1f;
+  --apple-surface-muted: rgba(44, 44, 46, 0.68);
+  --apple-separator: rgba(255, 255, 255, 0.1);
+  --apple-separator-strong: rgba(255, 255, 255, 0.17);
+  --apple-label: #f5f5f7;
+  --apple-secondary-label: #a1a1a6;
+  --apple-tertiary-label: #6e6e73;
+  --apple-blue: #2997ff;
+  --apple-blue-hover: #5eb0ff;
+  --apple-control-fill: rgba(120, 120, 128, 0.24);
+  --apple-control-fill-hover: rgba(120, 120, 128, 0.32);
+  --apple-elevated-shadow: none;
+  --apple-popover-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
+}
+
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --apple-canvas: #f5f5f7;
+    --apple-surface: rgba(255, 255, 255, 0.92);
+    --apple-surface-solid: #ffffff;
+    --apple-surface-muted: rgba(255, 255, 255, 0.68);
+    --apple-separator: rgba(0, 0, 0, 0.08);
+    --apple-separator-strong: rgba(0, 0, 0, 0.14);
+    --apple-label: #1d1d1f;
+    --apple-secondary-label: #6e6e73;
+    --apple-tertiary-label: #86868b;
+    --apple-blue: #0066cc;
+    --apple-blue-hover: #0071e3;
+    --apple-control-fill: rgba(118, 118, 128, 0.12);
+    --apple-control-fill-hover: rgba(118, 118, 128, 0.18);
+    --apple-elevated-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 12px 32px
+      rgba(0, 0, 0, 0.06);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --apple-canvas: #000000;
+    --apple-surface: rgba(29, 29, 31, 0.86);
+    --apple-surface-solid: #1d1d1f;
+    --apple-surface-muted: rgba(44, 44, 46, 0.68);
+    --apple-separator: rgba(255, 255, 255, 0.1);
+    --apple-separator-strong: rgba(255, 255, 255, 0.17);
+    --apple-label: #f5f5f7;
+    --apple-secondary-label: #a1a1a6;
+    --apple-tertiary-label: #6e6e73;
+    --apple-blue: #2997ff;
+    --apple-blue-hover: #5eb0ff;
+    --apple-control-fill: rgba(120, 120, 128, 0.24);
+    --apple-control-fill-hover: rgba(120, 120, 128, 0.32);
+    --apple-elevated-shadow: none;
+    --apple-popover-shadow: 0 20px 60px rgba(0, 0, 0, 0.42);
+  }
+}
+
+html {
+  background: var(--apple-canvas);
+}
+
+body {
+  background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--apple-canvas) 92%, white 8%),
+      var(--apple-canvas)
+    )
+    fixed;
+  color: var(--apple-label);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    sans-serif;
+  letter-spacing: 0;
+}
+
+[data-theme="dark"] body,
+[data-theme="verydark"] body {
+  background: radial-gradient(
+      circle at 50% -12%,
+      rgba(41, 151, 255, 0.12),
+      transparent 34rem
+    ), var(--apple-canvas);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] body {
+    background: radial-gradient(
+        circle at 50% -12%,
+        rgba(41, 151, 255, 0.12),
+        transparent 34rem
+      ), var(--apple-canvas);
+  }
+}
+
+::selection {
+  background: color-mix(in srgb, var(--apple-blue) 28%, transparent);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-primary,
+.login-button,
+.send-button,
+.queue-button,
+.floating-action-button {
+  background: var(--apple-blue);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled),
+.login-button:hover:not(:disabled),
+.send-button:hover:not(:disabled),
+.queue-button:hover:not(:disabled),
+.floating-action-button:hover {
+  background: var(--apple-blue-hover);
+}
+
+.btn-secondary,
+.copy-button,
+.global-sessions-load-more-button,
+.filter-clear-button,
+.filter-dropdown-trigger,
+.inbox-refresh-button,
+.mode-button,
+.toolbar-button,
+.attach-button,
+.thinking-toggle-button,
+.voice-input-button,
+.sidebar-toggle,
+.sidebar-close {
+  border-color: var(--apple-separator);
+  background: var(--apple-control-fill);
+  color: var(--apple-label);
+}
+
+.btn-secondary:hover:not(:disabled),
+.copy-button:hover,
+.global-sessions-load-more-button:hover:not(:disabled),
+.filter-clear-button:hover,
+.filter-dropdown-trigger:hover,
+.inbox-refresh-button:hover:not(:disabled),
+.mode-button:hover:not(:disabled),
+.toolbar-button:hover:not(:disabled),
+.attach-button:hover:not(:disabled),
+.thinking-toggle-button:hover,
+.voice-input-button:hover,
+.sidebar-toggle:hover,
+.sidebar-close:hover {
+  border-color: var(--apple-separator-strong);
+  background: var(--apple-control-fill-hover);
+  color: var(--apple-label);
+}
+
+input,
+textarea,
+select,
+.filter-search,
+.form-field input,
+.form-select,
+.login-field input {
+  background: var(--apple-surface-solid);
+  border-color: var(--apple-separator);
+  color: var(--apple-label);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] .filter-search,
+[data-theme="dark"] .form-field input,
+[data-theme="dark"] .form-select,
+[data-theme="dark"] .login-field input,
+[data-theme="verydark"] input,
+[data-theme="verydark"] textarea,
+[data-theme="verydark"] select,
+[data-theme="verydark"] .filter-search,
+[data-theme="verydark"] .form-field input,
+[data-theme="verydark"] .form-select,
+[data-theme="verydark"] .login-field input {
+  background: rgba(44, 44, 46, 0.72);
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.filter-search:focus,
+.form-field input:focus,
+.form-select:focus,
+.login-field input:focus {
+  border-color: var(--apple-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--apple-blue) 18%, transparent);
+}
+
+.loading,
+.error,
+.meta,
+.breadcrumb,
+.edit-change-summary,
+.project-card__meta,
+.session-list-item__meta,
+.settings-item-info p {
+  color: var(--apple-secondary-label);
+}
+
+.modal-content,
+.mode-selector-sheet,
+.session-menu-dropdown,
+.recent-sessions-dropdown,
+.filter-dropdown-menu {
+  background: var(--apple-surface);
+  -webkit-backdrop-filter: var(--apple-frost);
+  backdrop-filter: var(--apple-frost);
+  border-color: var(--apple-separator);
+  box-shadow: var(--apple-popover-shadow);
+}
+
+@media (max-width: 600px) {
+  body {
+    background: var(--apple-canvas);
+  }
+
+  .page-content-inner {
+    padding: 1rem 1.125rem 1.5rem;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .login-button,
+  .filter-clear-button,
+  .filter-dropdown-trigger,
+  .inbox-refresh-button {
+    min-height: var(--apple-touch-target);
+  }
+}

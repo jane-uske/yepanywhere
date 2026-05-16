@@ -361,8 +361,8 @@ export interface AppSessionSummary {
   originator?: string;
   /** CLI version from session metadata (e.g. "0.101.0") */
   cliVersion?: string;
-  /** Session source from session metadata (e.g. "vscode", "exec") */
-  source?: string;
+  /** Session source from session metadata (e.g. "vscode", "exec", or structured subagent source) */
+  source?: unknown;
   /** Approval policy from turn_context (e.g. "never", "on-request") */
   approvalPolicy?: string;
   /** Sandbox policy from turn_context */

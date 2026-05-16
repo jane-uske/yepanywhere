@@ -1,0 +1,498 @@
+/* Session-only Apple system app polish.
+   Import after index.css when enabling this override. */
+
+.session-page {
+  --apple-session-hairline: color-mix(
+    in srgb,
+    var(--border-subtle, var(--border-color)) 78%,
+    transparent
+  );
+  --apple-session-surface: color-mix(
+    in srgb,
+    var(--bg-secondary) 86%,
+    transparent
+  );
+  --apple-session-elevated: color-mix(
+    in srgb,
+    var(--bg-secondary) 94%,
+    var(--bg-surface)
+  );
+  --apple-session-shadow: 0 10px 34px rgba(0, 0, 0, 0.12);
+  --apple-session-shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg-surface) 94%, var(--bg-secondary)) 0,
+      var(--bg-surface) 220px
+    ), var(--bg-surface);
+}
+
+.session-page .session-header {
+  border-bottom-color: var(--apple-session-hairline);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025) inset;
+}
+
+.session-page .session-header-inner {
+  min-height: 48px;
+}
+
+.session-page .session-messages {
+  padding: 1.125rem clamp(0.75rem, 2.2vw, 1.5rem);
+}
+
+.session-page .message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.session-page .message {
+  margin-bottom: 0.35rem;
+}
+
+.session-page .message-user-prompt,
+.session-page .pending-message-bubble,
+.session-page .deferred-message-bubble {
+  padding: 0.44rem 0.72rem;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 70%, transparent);
+  border-radius: 18px;
+  box-shadow: var(--shadow-resting, 0 1px 2px rgba(0, 0, 0, 0.04));
+  line-height: 1.42;
+}
+
+.session-page .assistant-turn {
+  padding-left: 20px;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.session-page .timeline-item {
+  margin: 2px 0;
+}
+
+.session-page .timeline-item::before {
+  left: -10px;
+  width: 5px;
+  height: 5px;
+  background: color-mix(in srgb, var(--timeline-dot-default) 78%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bg-surface) 88%, transparent);
+}
+
+.session-page .timeline-item::after {
+  left: -8px;
+  background: color-mix(in srgb, var(--timeline-line-color) 78%, transparent);
+}
+
+.session-page .text-block,
+.session-page .text-content,
+.session-page .streaming-block,
+.session-page .streaming-pending {
+  line-height: 1.55;
+}
+
+.session-page .text-block p,
+.session-page .streaming-block p,
+.session-page .streaming-blocks p {
+  margin-bottom: 0.45rem;
+}
+
+.session-page .tool-row {
+  border-radius: 9px;
+}
+
+.session-page .tool-row-header {
+  min-height: 24px;
+  padding: 3px 7px;
+  gap: 7px;
+  border-radius: 9px;
+}
+
+.session-page .tool-row-header:hover {
+  background: color-mix(in srgb, var(--bg-hover) 72%, transparent);
+}
+
+.session-page .tool-row-header:focus {
+  outline-offset: 1px;
+  border-radius: 9px;
+}
+
+.session-page .tool-name {
+  font-weight: 590;
+  letter-spacing: 0;
+}
+
+.session-page .tool-summary {
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text-primary));
+}
+
+.session-page .tool-row-content {
+  margin: 5px 0 6px 18px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 62%, transparent);
+  border: 1px solid var(--apple-session-hairline);
+  border-left-color: color-mix(
+    in srgb,
+    var(--timeline-line-color) 90%,
+    var(--border-color)
+  );
+  border-radius: 10px;
+  box-shadow: var(--shadow-resting, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.session-page .tool-row-collapsed-preview {
+  margin: 5px 0 4px 18px;
+}
+
+.session-page .tool-block,
+.session-page .edit-result,
+.session-page .edit-collapsed-preview,
+.session-page .bash-collapsed-preview,
+.session-page .question-tool-use,
+.session-page .question-result {
+  border-color: var(--apple-session-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 74%, transparent);
+  box-shadow: none;
+}
+
+.session-page .tool-header {
+  padding: 0.44rem 0.62rem;
+  background: color-mix(in srgb, var(--bg-tertiary) 62%, transparent);
+  border-bottom-color: var(--apple-session-hairline);
+}
+
+.session-page .tool-content {
+  padding: 0.62rem;
+}
+
+.session-page .code-block,
+.session-page .text-block pre,
+.session-page .streaming-block pre,
+.session-page .streaming-blocks pre,
+.session-page .tool-content-json,
+.session-page .diff-view-container {
+  border-color: var(--apple-session-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-code) 88%, var(--bg-surface));
+}
+
+.session-page .diff-view {
+  border-radius: 10px;
+}
+
+.session-page .diff-content > div,
+.session-page .highlighted-diff .line {
+  min-height: 1.45em;
+}
+
+.session-page .edit-mobile-diff-button {
+  border-color: var(--apple-session-hairline);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg-secondary) 80%, var(--bg-surface));
+}
+
+.session-page .edit-mobile-diff-button:active {
+  transform: scale(0.995);
+}
+
+.session-page .session-input {
+  padding: 0.72rem 1rem 0.85rem;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+  border-top: 1px solid var(--apple-session-hairline);
+}
+
+.session-page .session-input-inner {
+  max-width: 100%;
+}
+
+.session-page .message-input-wrapper {
+  --mobile-composer-textarea-height: 2.5rem;
+}
+
+.session-page .message-input {
+  gap: 0.44rem;
+  padding: 0.45rem;
+  background: var(--apple-session-surface);
+  border: 1px solid var(--apple-session-hairline);
+  border-radius: 20px;
+  box-shadow: var(--apple-session-shadow-soft);
+}
+
+.session-page .message-input textarea {
+  padding: 0.72rem 0.82rem;
+  background: transparent;
+  border: 0;
+  border-radius: 15px;
+  box-shadow: none;
+  line-height: 1.42;
+}
+
+.session-page .message-input textarea:focus {
+  box-shadow: none;
+}
+
+.session-page .message-input:focus-within {
+  border-color: color-mix(in srgb, var(--focus-border) 58%, var(--border-input));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus-border) 14%, transparent),
+    var(--apple-session-shadow-soft);
+}
+
+.session-page .message-input-collapsed {
+  opacity: 0.82;
+  gap: 0.35rem;
+  padding: 0.28rem 0.32rem;
+  border-radius: 18px;
+}
+
+.session-page .message-input-toolbar {
+  padding: 0 0.08rem 0.02rem;
+}
+
+.session-page .message-input-toggle,
+.session-page .tool-approval-toggle,
+.session-page .question-panel-toggle {
+  width: 34px;
+  height: 22px;
+  top: -11px;
+  border-radius: 999px;
+  background: var(--apple-session-elevated);
+  border-color: var(--apple-session-hairline);
+  box-shadow: var(--apple-session-shadow-soft);
+}
+
+.session-page .send-button,
+.session-page .stop-button,
+.session-page .queue-button {
+  width: 34px;
+  height: 34px;
+  box-shadow: var(--shadow-resting, 0 1px 2px rgba(0, 0, 0, 0.04));
+}
+
+.session-page .mode-button,
+.session-page .attach-button,
+.session-page .pending-approval-indicator {
+  min-height: 30px;
+  border-color: var(--apple-session-hairline);
+  background: color-mix(in srgb, var(--bg-secondary) 62%, transparent);
+}
+
+.session-page .tool-approval-panel,
+.session-page .question-panel {
+  gap: 0.65rem;
+  padding: 0.75rem;
+  background: var(--apple-session-elevated);
+  border-color: var(--apple-session-hairline);
+  border-radius: 16px;
+  box-shadow: var(--apple-session-shadow);
+}
+
+.session-page .question-panel {
+  border-color: color-mix(
+    in srgb,
+    var(--primary-color) 42%,
+    var(--border-color)
+  );
+}
+
+.session-page .tool-approval-title {
+  font-size: var(--font-size-base);
+}
+
+.session-page .tool-approval-subtitle,
+.session-page .tool-approval-question,
+.session-page .question-content .question-text {
+  line-height: 1.42;
+}
+
+.session-page .tool-approval-options,
+.session-page .question-options-list {
+  gap: 0.45rem;
+}
+
+.session-page .tool-approval-option,
+.session-page .question-option-btn,
+.session-page .question-tab,
+.session-page .question-btn,
+.session-page .tool-approval-feedback-input,
+.session-page .tool-approval-feedback-submit,
+.session-page .question-other-input input {
+  border-color: var(--apple-session-hairline);
+  border-radius: 12px;
+}
+
+.session-page .tool-approval-option,
+.session-page .question-option-btn {
+  padding: 0.58rem 0.68rem;
+  background: color-mix(in srgb, var(--bg-tertiary) 58%, transparent);
+}
+
+.session-page .question-tabs {
+  gap: 0.35rem;
+}
+
+.session-page .question-tab {
+  padding: 0.36rem 0.58rem;
+}
+
+.session-page .question-actions {
+  padding-top: 0.5rem;
+}
+
+.session-page .session-context-panel,
+.session-page .session-context-panel-rail {
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  border-left-color: var(--apple-session-hairline);
+}
+
+.session-page .session-context-toggle {
+  border-radius: 10px;
+  color: color-mix(in srgb, var(--text-muted) 88%, var(--text-primary));
+}
+
+.session-page .session-context-toggle:hover {
+  background: color-mix(in srgb, var(--bg-hover) 82%, transparent);
+  border-color: var(--apple-session-hairline);
+}
+
+.session-page .session-context-panel-rail {
+  -webkit-backdrop-filter: var(--surface-blur);
+  backdrop-filter: var(--surface-blur);
+}
+
+@media (max-width: 600px) {
+  .session-page .session-messages {
+    padding: 0.58rem 0.5rem 0.7rem;
+  }
+
+  .session-page .message-list {
+    gap: 0.48rem;
+  }
+
+  .session-page .message-user-prompt {
+    max-width: 92%;
+    padding: 0.42rem 0.64rem;
+  }
+
+  .session-page .assistant-turn {
+    padding-left: 16px;
+  }
+
+  .session-page .timeline-item::before {
+    left: -8px;
+  }
+
+  .session-page .timeline-item::after {
+    left: -6px;
+  }
+
+  .session-page .tool-row-header {
+    min-height: 26px;
+    padding: 3px 5px;
+    gap: 5px;
+  }
+
+  .session-page .tool-name,
+  .session-page .tool-summary,
+  .session-page .tool-use-expanded,
+  .session-page .tool-result-expanded {
+    font-size: var(--font-size-sm);
+  }
+
+  .session-page .tool-row-content,
+  .session-page .tool-row-collapsed-preview {
+    margin-left: 12px;
+  }
+
+  .session-page .tool-row-content {
+    padding: 6px;
+  }
+
+  .session-page .code-block,
+  .session-page .text-block pre,
+  .session-page .streaming-block pre,
+  .session-page .streaming-blocks pre {
+    padding: 0.5rem;
+    font-size: 12px;
+    line-height: 1.42;
+  }
+
+  .session-page .diff-view-container {
+    --diff-preview-max-height: 8.5rem;
+  }
+
+  .session-page .diff-content > div,
+  .session-page .highlighted-diff .line {
+    padding: 0 0.32rem;
+    line-height: 1.32;
+  }
+
+  .session-page .edit-result,
+  .session-page .edit-collapsed-preview {
+    gap: 0.3rem;
+  }
+
+  .session-page .edit-mobile-diff-button {
+    min-height: 2.25rem;
+    padding: 0.42rem 0.58rem;
+  }
+
+  .session-page .session-input {
+    padding: 0.5rem 0.5rem calc(0.56rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .session-page .message-input {
+    padding: 0.34rem;
+    border-radius: 18px;
+  }
+
+  .session-page .message-input-collapsed {
+    padding: 0.28rem 0.32rem;
+  }
+
+  .session-page .message-input:not(.message-input-collapsed) textarea,
+  .session-page .message-input-collapsed textarea {
+    padding: 0.58rem 0.7rem;
+    line-height: 1.35;
+  }
+
+  .session-page .message-input-collapsed textarea {
+    padding: 0 0.64rem;
+    line-height: var(--mobile-composer-textarea-height);
+  }
+
+  .session-page .message-input-toolbar {
+    gap: 0.35rem;
+  }
+
+  .session-page .message-input-left {
+    gap: 0.35rem;
+  }
+
+  .session-page .mode-button,
+  .session-page .attach-button,
+  .session-page .pending-approval-indicator {
+    min-height: 32px;
+  }
+
+  .session-page .tool-approval-panel,
+  .session-page .question-panel {
+    padding: 0.62rem;
+    border-radius: 15px;
+    max-height: 54vh;
+  }
+
+  .session-page .tool-approval-option,
+  .session-page .question-option-btn {
+    gap: 0.55rem;
+    padding: 0.54rem 0.58rem;
+  }
+
+  .session-page .question-actions {
+    gap: 0.42rem;
+  }
+
+  .session-page .question-btn {
+    min-width: 0;
+    padding: 0.5rem 0.55rem;
+  }
+}

@@ -8,6 +8,7 @@ import { api } from "../api/client";
 import { useActivityBusState } from "../hooks/useActivityBusState";
 import type { ProcessState } from "../hooks/useSession";
 import { useI18n } from "../i18n";
+import { getSessionSourceInfo } from "../lib/sessionSource";
 import type { SessionStatus } from "../types";
 import { Modal } from "./ui/Modal";
 
@@ -41,7 +42,7 @@ interface ProcessInfoModalProps {
   contextUsage?: ContextUsage;
   originator?: string;
   cliVersion?: string;
-  sessionSource?: string;
+  sessionSource?: unknown;
   approvalPolicy?: string;
   sandboxPolicy?: SessionSandboxPolicy;
   createdAt?: string;
@@ -198,6 +199,7 @@ export function ProcessInfoModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { connected: streamConnected, connectionState } = useActivityBusState();
+  const sessionSourceInfo = getSessionSourceInfo(sessionSource);
 
   // Fetch process info when modal opens (if session is owned)
   useEffect(() => {
@@ -284,7 +286,16 @@ export function ProcessInfoModal({
           />
           <InfoRow
             label={t("processInfoLabelSessionSource")}
-            value={sessionSource}
+            value={sessionSourceInfo?.label}
+          />
+          <InfoRow
+            label={t("processInfoLabelParentThread")}
+            value={sessionSourceInfo?.parentThreadId}
+            mono
+          />
+          <InfoRow
+            label={t("processInfoLabelSubagentDepth")}
+            value={sessionSourceInfo?.depth}
           />
           <InfoRow
             label={t("processInfoLabelApprovalPolicy")}

@@ -1,0 +1,514 @@
+/*
+ * Apple system-app list overrides.
+ *
+ * Scope: Projects, All Sessions, Inbox, filter bars, grouped empty states, and
+ * card-mode project/session rows. This file intentionally uses existing class
+ * names only, so it can be imported after index.css without React changes.
+ */
+
+:root {
+  --apple-list-page-bg: #f5f5f7;
+  --apple-list-group-bg: #ffffff;
+  --apple-list-row-hover: #f2f2f7;
+  --apple-list-row-active: #e8f0ff;
+  --apple-list-border: rgba(60, 60, 67, 0.16);
+  --apple-list-border-strong: rgba(60, 60, 67, 0.24);
+  --apple-list-text: #1d1d1f;
+  --apple-list-secondary: rgba(60, 60, 67, 0.72);
+  --apple-list-tertiary: rgba(60, 60, 67, 0.52);
+  --apple-list-accent: #007aff;
+  --apple-list-danger: #ff3b30;
+  --apple-list-radius: 14px;
+  --apple-list-row-min-height: 64px;
+}
+
+[data-theme="dark"],
+[data-theme="verydark"] {
+  --apple-list-page-bg: #1c1c1e;
+  --apple-list-group-bg: #2c2c2e;
+  --apple-list-row-hover: #3a3a3c;
+  --apple-list-row-active: rgba(10, 132, 255, 0.2);
+  --apple-list-border: rgba(235, 235, 245, 0.13);
+  --apple-list-border-strong: rgba(235, 235, 245, 0.22);
+  --apple-list-text: #f5f5f7;
+  --apple-list-secondary: rgba(235, 235, 245, 0.68);
+  --apple-list-tertiary: rgba(235, 235, 245, 0.48);
+  --apple-list-accent: #0a84ff;
+  --apple-list-danger: #ff453a;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --apple-list-page-bg: #1c1c1e;
+    --apple-list-group-bg: #2c2c2e;
+    --apple-list-row-hover: #3a3a3c;
+    --apple-list-row-active: rgba(10, 132, 255, 0.2);
+    --apple-list-border: rgba(235, 235, 245, 0.13);
+    --apple-list-border-strong: rgba(235, 235, 245, 0.22);
+    --apple-list-text: #f5f5f7;
+    --apple-list-secondary: rgba(235, 235, 245, 0.68);
+    --apple-list-tertiary: rgba(235, 235, 245, 0.48);
+    --apple-list-accent: #0a84ff;
+    --apple-list-danger: #ff453a;
+  }
+}
+
+.main-content-wrapper,
+.main-content-mobile {
+  background: var(--apple-list-page-bg);
+}
+
+.page-scroll-container {
+  background: var(--apple-list-page-bg);
+}
+
+.page-content-inner,
+.main-content-constrained .page-content-inner {
+  max-width: 860px;
+}
+
+.inbox-content {
+  padding-top: 0;
+}
+
+/* Toolbars and filters should feel like utility chrome, not separate cards. */
+.inbox-toolbar,
+.filter-bar {
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 0 2px;
+}
+
+.filter-search-form {
+  min-width: 240px;
+  max-width: 360px;
+}
+
+.filter-search,
+.filter-search-form .filter-search,
+.filter-search-button,
+.filter-dropdown-button,
+.filter-clear-button,
+.inbox-refresh-button,
+.global-sessions-load-more-button {
+  min-height: 36px;
+  background: color-mix(in srgb, var(--apple-list-group-bg) 88%, transparent);
+  border-color: var(--apple-list-border);
+  color: var(--apple-list-secondary);
+  box-shadow: none;
+}
+
+.filter-search,
+.filter-search-form .filter-search {
+  color: var(--apple-list-text);
+}
+
+.filter-search::placeholder {
+  color: var(--apple-list-tertiary);
+}
+
+.filter-search:focus {
+  border-color: var(--apple-list-accent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--apple-list-accent) 18%, transparent);
+}
+
+.filter-search-button:hover,
+.filter-dropdown-button:hover,
+.filter-clear-button:hover,
+.inbox-refresh-button:hover:not(:disabled),
+.global-sessions-load-more-button:hover:not(:disabled) {
+  background: var(--apple-list-row-hover);
+  border-color: var(--apple-list-border-strong);
+  color: var(--apple-list-text);
+}
+
+.filter-dropdown-button.has-selection {
+  border-color: color-mix(
+    in srgb,
+    var(--apple-list-accent) 56%,
+    var(--apple-list-border)
+  );
+  color: var(--apple-list-text);
+  background: color-mix(
+    in srgb,
+    var(--apple-list-accent) 8%,
+    var(--apple-list-group-bg)
+  );
+}
+
+.filter-dropdown-dropdown,
+.filter-dropdown-sheet {
+  background: var(--apple-list-group-bg);
+  border-color: var(--apple-list-border);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.18);
+}
+
+.filter-dropdown-option {
+  color: var(--apple-list-text);
+}
+
+.filter-dropdown-option:hover,
+.filter-dropdown-option.selected {
+  background: var(--apple-list-row-hover);
+}
+
+.filter-dropdown-description,
+.filter-dropdown-count,
+.filter-dropdown-clear .filter-dropdown-label {
+  color: var(--apple-list-tertiary);
+}
+
+.filter-dropdown-checkbox.checked {
+  background: var(--apple-list-accent);
+  border-color: var(--apple-list-accent);
+}
+
+/* Group containers: a quiet iOS/macOS Settings-style list surface. */
+.project-list-cards,
+.session-list,
+.sessions-list {
+  gap: 0;
+  overflow: hidden;
+  background: var(--apple-list-group-bg);
+  border: 1px solid var(--apple-list-border);
+  border-radius: var(--apple-list-radius);
+  box-shadow: none;
+}
+
+.project-card,
+.session-list-item {
+  min-width: 0;
+}
+
+.project-card:not(:last-child),
+.session-list > div:not(:last-child) .session-list-item,
+.sessions-list .session-list-item:not(:last-child) {
+  border-bottom: 1px solid var(--apple-list-border);
+}
+
+.project-card__link,
+.session-list-item--card .session-list-item__link {
+  min-height: var(--apple-list-row-min-height);
+  padding: 12px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--apple-list-text);
+}
+
+.project-card__link:hover,
+.session-list-item--card .session-list-item__link:hover {
+  background: var(--apple-list-row-hover);
+  border-color: transparent;
+}
+
+.session-list-item.selected .session-list-item__link,
+.session-list-item--card.current .session-list-item__link {
+  background: var(--apple-list-row-active);
+}
+
+.session-list-item.archived .session-list-item__link,
+.session-list li.archived > a {
+  opacity: 0.58;
+}
+
+.project-card__header,
+.session-list-item--card .session-list-item__title {
+  min-width: 0;
+}
+
+.project-card__name,
+.session-list-item--card .session-list-item__title {
+  color: var(--apple-list-text);
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.session-list-item .session-list-item__title-text,
+.session-list-item .session-list-item__title,
+.session-list li > a strong {
+  color: var(--apple-list-text);
+}
+
+.session-list-item.unread .session-list-item__title-text,
+.session-list-item.unread .session-list-item__title,
+.session-list li.unread > a strong {
+  font-weight: 700;
+}
+
+.project-card__meta,
+.session-list-item--card .session-list-item__meta {
+  margin-top: 4px;
+  color: var(--apple-list-tertiary);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.project-card__path,
+.project-card__sessions,
+.project-card__time,
+.session-list-item__project,
+.session-badge-executor,
+.context-usage-label {
+  color: var(--apple-list-tertiary);
+}
+
+.project-card__stats,
+.session-list-item--card .session-list-item__meta {
+  gap: 8px;
+}
+
+.project-card__separator,
+.session-list-item__project::after {
+  color: var(--apple-list-border-strong);
+}
+
+.project-card__attention-badge {
+  min-width: 18px;
+  height: 18px;
+  background: var(--apple-list-danger);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+.project-card__new-session {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--apple-list-accent);
+}
+
+.project-card__new-session:hover {
+  background: color-mix(in srgb, var(--apple-list-accent) 12%, transparent);
+  border-color: transparent;
+  color: var(--apple-list-accent);
+}
+
+.session-list-item__checkbox {
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+  accent-color: var(--apple-list-accent);
+}
+
+.session-list-header {
+  margin: 0 0 8px;
+  padding: 0 4px;
+  border-bottom: 0;
+}
+
+.session-list-header__select-all {
+  color: var(--apple-list-secondary);
+}
+
+.session-list-item__menu {
+  right: 4px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--apple-list-group-bg) 58%
+  );
+}
+
+.session-list-item:hover .session-list-item__menu {
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--apple-list-row-hover) 58%
+  );
+}
+
+.session-list-item__menu .session-menu-trigger {
+  background: color-mix(in srgb, var(--apple-list-group-bg) 92%, transparent);
+  border: 1px solid var(--apple-list-border);
+  color: var(--apple-list-secondary);
+  border-radius: 50%;
+}
+
+.session-list-item__menu .session-menu-trigger:hover {
+  background: var(--apple-list-row-hover);
+  border-color: var(--apple-list-border-strong);
+  color: var(--apple-list-text);
+}
+
+.session-draft-badge,
+.session-archived-badge,
+.session-badge,
+.inbox-item-badge,
+.inbox-section-count {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.session-draft-badge {
+  background: rgba(255, 149, 0, 0.14);
+  color: #b26a00;
+}
+
+.session-archived-badge,
+.session-badge-executor,
+.inbox-section-count {
+  background: var(--apple-list-row-hover);
+  color: var(--apple-list-tertiary);
+}
+
+.inbox-badge-approval,
+.inbox-badge-question {
+  background: color-mix(in srgb, var(--apple-list-accent) 12%, transparent);
+  color: var(--apple-list-accent);
+}
+
+/* Inbox section headings become group labels instead of colored category cards. */
+.inbox-tiers {
+  gap: 20px;
+}
+
+.inbox-section {
+  margin-bottom: 0;
+}
+
+.inbox-section-header {
+  margin: 0 0 7px;
+  padding: 0 4px;
+  border-left: 0;
+  color: var(--apple-list-secondary);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.inbox-tier-attention .inbox-section-header,
+.inbox-tier-active .inbox-section-header,
+.inbox-tier-recent .inbox-section-header,
+.inbox-tier-unread8h .inbox-section-header,
+.inbox-tier-unread24h .inbox-section-header {
+  color: var(--apple-list-secondary);
+}
+
+.inbox-section-empty .inbox-section-header {
+  opacity: 1;
+}
+
+.inbox-section-empty-message {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--apple-list-group-bg);
+  border: 1px solid var(--apple-list-border);
+  border-radius: var(--apple-list-radius);
+  color: var(--apple-list-tertiary);
+  font-style: normal;
+}
+
+/* Empty states stay useful and restrained, not hero-like. */
+.inbox-empty {
+  min-height: 280px;
+  padding: 40px 20px;
+  background: var(--apple-list-group-bg);
+  border: 1px solid var(--apple-list-border);
+  border-radius: var(--apple-list-radius);
+  color: var(--apple-list-tertiary);
+}
+
+.inbox-empty svg {
+  width: 36px;
+  height: 36px;
+  margin-bottom: 12px;
+  color: var(--apple-list-tertiary);
+}
+
+.inbox-empty h3 {
+  margin-bottom: 6px;
+  color: var(--apple-list-text);
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.inbox-empty p {
+  max-width: 340px;
+  color: var(--apple-list-secondary);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.global-sessions-load-more {
+  padding: 18px 0 0;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --apple-list-row-min-height: 68px;
+    --apple-list-radius: 13px;
+  }
+
+  .page-content-inner {
+    padding-inline: 14px;
+  }
+
+  .inbox-toolbar,
+  .filter-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .filter-search-form,
+  .filter-search {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
+
+  .filter-dropdowns {
+    width: 100%;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .filter-dropdown-container,
+  .filter-dropdown-button {
+    flex-shrink: 0;
+  }
+
+  .filter-dropdown-button,
+  .filter-clear-button,
+  .inbox-refresh-button {
+    min-height: 42px;
+    justify-content: center;
+  }
+
+  .project-card__link,
+  .session-list-item--card .session-list-item__link {
+    padding: 13px 14px;
+  }
+
+  .project-card__meta,
+  .session-list-item--card .session-list-item__meta {
+    flex-wrap: wrap;
+  }
+
+  .project-card__new-session {
+    width: 36px;
+    height: 36px;
+  }
+
+  .session-list-item__menu {
+    opacity: 1;
+    padding-left: 18px;
+  }
+
+  .session-list-item--card .session-list-item__link {
+    padding-right: 52px;
+  }
+}

@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "../../types";
-import { findPendingTasks } from "../pendingTasks";
+import {
+  findPendingTasks,
+  findUnmappedPendingTaskForAgent,
+} from "../pendingTasks";
 
 describe("findPendingTasks", () => {
   it("finds Task tool_use without matching tool_result", () => {
@@ -212,5 +215,79 @@ describe("findPendingTasks", () => {
     const pending = findPendingTasks(messages);
 
     expect(pending).toHaveLength(0);
+  });
+});
+
+describe("findUnmappedPendingTaskForAgent", () => {
+  it("returns the only pending Task that does not already have an agent mapping", () => {
+    const messages: Message[] = [
+      {
+        id: "msg-1",
+        type: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: { description: "Research trees", subagent_type: "Explore" },
+          },
+        ],
+      },
+    ];
+
+    const pendingTask = findUnmappedPendingTaskForAgent(messages, new Map());
+
+    expect(pendingTask?.toolUseId).toBe("task-1");
+  });
+
+  it("does not return a Task that already has an agent mapping", () => {
+    const messages: Message[] = [
+      {
+        id: "msg-1",
+        type: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: { description: "Research trees", subagent_type: "Explore" },
+          },
+        ],
+      },
+    ];
+
+    const pendingTask = findUnmappedPendingTaskForAgent(
+      messages,
+      new Map([["task-1", "agent-1"]]),
+    );
+
+    expect(pendingTask).toBeUndefined();
+  });
+
+  it("stays conservative when multiple unmapped Tasks could own the agent", () => {
+    const messages: Message[] = [
+      {
+        id: "msg-1",
+        type: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "task-1",
+            name: "Task",
+            input: { description: "Research trees", subagent_type: "Explore" },
+          },
+          {
+            type: "tool_use",
+            id: "task-2",
+            name: "Task",
+            input: { description: "Research lakes", subagent_type: "Explore" },
+          },
+        ],
+      },
+    ];
+
+    const pendingTask = findUnmappedPendingTaskForAgent(messages, new Map());
+
+    expect(pendingTask).toBeUndefined();
   });
 });

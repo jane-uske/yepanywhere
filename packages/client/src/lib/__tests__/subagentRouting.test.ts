@@ -4,6 +4,7 @@ import type { Message } from "../../types";
 import {
   addMessageToAgentContent,
   extractAgentId,
+  getSubagentContentAgentId,
   groupMessagesByAgentId,
   isSubagentMessage,
   updateAgentStatus,
@@ -50,6 +51,36 @@ describe("extractAgentId", () => {
   it("returns null when session_id is not a string", () => {
     const msg = { session_id: 123 as unknown as string };
     expect(extractAgentId(msg)).toBeNull();
+  });
+});
+
+describe("getSubagentContentAgentId", () => {
+  it("uses parentToolUseId for legacy subagent messages", () => {
+    const msg = {
+      isSubagent: true,
+      parentToolUseId: "tool-abc",
+      agentId: "agent-new",
+    };
+
+    expect(getSubagentContentAgentId(msg)).toBe("tool-abc");
+  });
+
+  it("uses agentId for SDK sidechain messages without parentToolUseId", () => {
+    const msg = {
+      isSubagent: true,
+      agentId: "agent-new",
+    };
+
+    expect(getSubagentContentAgentId(msg)).toBe("agent-new");
+  });
+
+  it("returns undefined for main-session messages", () => {
+    const msg = {
+      isSubagent: false,
+      agentId: "agent-new",
+    };
+
+    expect(getSubagentContentAgentId(msg)).toBeUndefined();
   });
 });
 

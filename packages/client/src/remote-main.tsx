@@ -31,6 +31,7 @@ import { initializeTabSize } from "./hooks/useTabSize";
 import { initializeTheme } from "./hooks/useTheme";
 import { I18nProvider } from "./i18n";
 import { NavigationLayout } from "./layouts";
+import { initializeDisplayModeClasses } from "./lib/displayMode";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentsPage } from "./pages/AgentsPage";
 import { DirectLoginPage } from "./pages/DirectLoginPage";
@@ -47,11 +48,16 @@ import { RelayLoginPage } from "./pages/RelayLoginPage";
 import { SessionPage } from "./pages/SessionPage";
 import { SettingsLayout } from "./pages/settings";
 import "./styles/index.css";
+import "./styles/apple-foundation.css";
+import "./styles/apple-navigation.css";
+import "./styles/apple-lists.css";
+import "./styles/apple-session.css";
 
 // Apply saved preferences before React renders to avoid flash
 initializeTheme();
 initializeFontSize();
 initializeTabSize();
+initializeDisplayModeClasses();
 
 // Get base URL for router (Vite sets this based on --base flag)
 // Remove trailing slash for BrowserRouter basename

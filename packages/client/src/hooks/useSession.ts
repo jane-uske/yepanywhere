@@ -6,8 +6,12 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
 import { getMessageId } from "../lib/mergeMessages";
-import { findPendingTasks } from "../lib/pendingTasks";
+import {
+  findPendingTasks,
+  findUnmappedPendingTaskForAgent,
+} from "../lib/pendingTasks";
 import { extractSessionIdFromFileEvent } from "../lib/sessionFile";
+import { getSubagentContentAgentId } from "../lib/subagentRouting";
 import type {
   InputRequest,
   Message,
@@ -30,6 +34,7 @@ import { useSessionStream } from "./useSessionStream";
 import { useSessionWatchStream } from "./useSessionWatchStream";
 import {
   type StreamingMarkdownCallbacks,
+  type SubagentMappingSource,
   useStreamingContent,
 } from "./useStreamingContent";
 
@@ -663,6 +668,38 @@ export function useSession(
     [setAgentContent],
   );
 
+  const handleToolUseMapping = useCallback(
+    (
+      toolUseId: string,
+      agentId: string,
+      source: SubagentMappingSource = "parentToolUseId",
+    ) => {
+      if (source === "parentToolUseId") {
+        registerToolUseAgent(toolUseId, agentId);
+        return;
+      }
+
+      setToolUseToAgent((prev) => {
+        const pendingTask = findUnmappedPendingTaskForAgent(messages, prev);
+        const next = new Map(prev);
+        let changed = false;
+
+        if (pendingTask) {
+          next.set(pendingTask.toolUseId, agentId);
+          changed = true;
+        }
+
+        if (!next.has(agentId)) {
+          next.set(agentId, agentId);
+          changed = true;
+        }
+
+        return changed ? next : prev;
+      });
+    },
+    [messages, registerToolUseAgent, setToolUseToAgent],
+  );
+
   // Use streaming content hook for handling stream_event stream messages
   const {
     handleStreamEvent,
@@ -670,7 +707,7 @@ export function useSession(
     cleanup: cleanupStreaming,
   } = useStreamingContent({
     onUpdateMessage: handleStreamingUpdate,
-    onToolUseMapping: registerToolUseAgent,
+    onToolUseMapping: handleToolUseMapping,
     onAgentContextUsage: handleAgentContextUsage,
     contextWindowSize: getModelContextWindow(session?.model, session?.provider),
     streamingMarkdownCallbacks,
@@ -721,14 +758,7 @@ export function useSession(
 
         // For assistant messages, clear streaming state and remove ALL streaming placeholders
         if (msgType === "assistant") {
-          // Check if this is a subagent message
-          // Use parentToolUseId as the routing key (it's the Task tool_use id)
-          const isSubagentMsg =
-            sdkMessage.isSubagent &&
-            typeof sdkMessage.parentToolUseId === "string";
-          const msgAgentId = isSubagentMsg
-            ? (sdkMessage.parentToolUseId as string)
-            : undefined;
+          const msgAgentId = getSubagentContentAgentId(sdkMessage);
 
           // Clear streaming state via hook
           clearStreaming();
@@ -816,19 +846,21 @@ export function useSession(
 
         // Route subagent messages to agentContent instead of main messages
         // This keeps the parent session's DAG clean and allows proper nesting in UI
-        // Use parentToolUseId as the routing key (it's the Task tool_use id)
-        if (
-          sdkMessage.isSubagent &&
-          typeof sdkMessage.parentToolUseId === "string"
-        ) {
-          const agentId = sdkMessage.parentToolUseId;
+        // Legacy SDK provides parentToolUseId. New SDK only provides agentId
+        // for sidechain messages, so route by agentId and recover the parent
+        // Task mapping separately when there is a single safe pending Task.
+        const subagentAgentId = getSubagentContentAgentId(sdkMessage);
 
-          // Capture toolUseId → agentId mapping on first subagent message
-          // This allows TaskRenderer to access agentContent immediately
-          // Note: Since agentId === parentToolUseId === toolUseId, the mapping is identity
-          registerToolUseAgent(agentId, agentId);
+        if (subagentAgentId) {
+          handleToolUseMapping(
+            subagentAgentId,
+            subagentAgentId,
+            typeof sdkMessage.parentToolUseId === "string"
+              ? "parentToolUseId"
+              : "agentId",
+          );
 
-          handleStreamSubagentMessage(incoming, agentId);
+          handleStreamSubagentMessage(incoming, subagentAgentId);
           return; // Don't add to main messages
         }
 
@@ -1043,7 +1075,7 @@ export function useSession(
       streamingMarkdownCallbacks,
       handleStreamMessageEvent,
       handleStreamSubagentMessage,
-      registerToolUseAgent,
+      handleToolUseMapping,
       setAgentContent,
       setMessages,
       setSession,

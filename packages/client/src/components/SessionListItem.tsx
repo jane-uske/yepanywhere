@@ -9,7 +9,7 @@ import type {
   SessionStatus,
 } from "../types";
 import { ContextUsageIndicator } from "./ContextUsageIndicator";
-import { SessionMenu } from "./SessionMenu";
+import { SessionMenu, type SessionMenuHandle } from "./SessionMenu";
 import { SessionStatusBadge } from "./StatusBadge";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 
@@ -138,6 +138,7 @@ export function SessionListItem({
   const [isSaving, setIsSaving] = useState(false);
   const [localTitle, setLocalTitle] = useState<string | undefined>(undefined);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const sessionMenuRef = useRef<SessionMenuHandle>(null);
   const isSavingRef = useRef(false);
 
   // Computed values with optimistic fallback
@@ -267,6 +268,13 @@ export function SessionListItem({
     onSelect?.(sessionId, e.target.checked);
   };
 
+  const handleContextMenu = (e: React.MouseEvent<HTMLLIElement>) => {
+    if (!provider || isEditing) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sessionMenuRef.current?.openAt({ x: e.clientX, y: e.clientY });
+  };
+
   // Activity indicator for compact mode
   const getCompactActivityIndicator = () => {
     // External sessions always show external badge
@@ -317,6 +325,7 @@ export function SessionListItem({
   ]
     .filter(Boolean)
     .join(" ");
+  const compactActivityIndicator = getCompactActivityIndicator();
 
   // Star icon SVG
   const StarIcon = ({
@@ -338,7 +347,7 @@ export function SessionListItem({
   );
 
   return (
-    <li className={liClasses}>
+    <li className={liClasses} onContextMenu={handleContextMenu}>
       {/* Checkbox for multi-select (only shown when onSelect is provided) */}
       {onSelect && (
         <input
@@ -435,7 +444,23 @@ export function SessionListItem({
                   {projectName}
                 </span>
               )}
-              {getCompactActivityIndicator()}
+              {compactActivityIndicator}
+              {!compactActivityIndicator && showTimestamp && (
+                <span
+                  className={
+                    hasUnread
+                      ? "session-list-item__compact-unread"
+                      : "session-list-item__compact-time"
+                  }
+                  aria-label={hasUnread ? "Unread" : undefined}
+                >
+                  {hasUnread
+                    ? ""
+                    : updatedAt
+                      ? formatRelativeTime(updatedAt)
+                      : ""}
+                </span>
+              )}
             </>
           )}
         </Link>
@@ -444,6 +469,7 @@ export function SessionListItem({
       {/* Only show menu when provider is available (required for clone) */}
       {provider && (
         <SessionMenu
+          ref={sessionMenuRef}
           sessionId={sessionId}
           projectId={projectId}
           isStarred={isStarred ?? false}

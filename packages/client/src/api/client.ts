@@ -72,6 +72,7 @@ export interface GlobalSessionItem {
   updatedAt: string;
   messageCount: number;
   provider: ProviderName;
+  model?: string;
   projectId: string;
   projectName: string;
   ownership: SessionStatus;
@@ -81,6 +82,7 @@ export interface GlobalSessionItem {
   customTitle?: string;
   isArchived?: boolean;
   isStarred?: boolean;
+  source?: unknown;
   /** SSH host alias for remote execution (undefined = local) */
   executor?: string;
 }
@@ -824,6 +826,7 @@ export const api = {
     includeArchived?: boolean;
     starred?: boolean;
     includeStats?: boolean;
+    includeSubagents?: boolean;
   }) => {
     const searchParams = new URLSearchParams();
     if (params?.project) searchParams.set("project", params.project);
@@ -833,6 +836,7 @@ export const api = {
     if (params?.includeArchived) searchParams.set("includeArchived", "true");
     if (params?.starred) searchParams.set("starred", "true");
     if (params?.includeStats) searchParams.set("includeStats", "true");
+    if (params?.includeSubagents) searchParams.set("includeSubagents", "true");
     const query = searchParams.toString();
     return fetchJSON<GlobalSessionsResponse>(
       query ? `/sessions?${query}` : "/sessions",

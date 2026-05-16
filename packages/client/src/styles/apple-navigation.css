@@ -1,0 +1,525 @@
+/* ==========================================================================
+   Apple-style navigation chrome override
+   --------------------------------------------------------------------------
+   Scope: Sidebar, PageHeader, and compact sidebar session rows only.
+   This file intentionally relies on existing markup/classes and does not
+   introduce layout-level whitespace or marketing-style decoration.
+   ========================================================================== */
+
+:root {
+  --apple-nav-radius: 10px;
+  --apple-nav-radius-sm: 8px;
+  --apple-nav-control-size: 32px;
+  --apple-nav-row-height: 34px;
+  --apple-nav-ease: 160ms ease;
+  --apple-nav-sidebar-bg: rgba(246, 246, 248, 0.82);
+  --apple-nav-sidebar-border: rgba(60, 60, 67, 0.14);
+  --apple-nav-sidebar-shadow: inset -1px 0 rgba(255, 255, 255, 0.64);
+  --apple-nav-header-bg: rgba(250, 250, 252, 0.78);
+  --apple-nav-active-bg: rgba(0, 122, 255, 0.13);
+  --apple-nav-active-border: rgba(0, 122, 255, 0.28);
+  --apple-nav-hover-bg: rgba(60, 60, 67, 0.08);
+  --apple-nav-control-bg: rgba(120, 120, 128, 0.12);
+  --apple-nav-control-hover-bg: rgba(120, 120, 128, 0.18);
+  --apple-nav-session-current-bg: rgba(60, 60, 67, 0.1);
+}
+
+[data-theme="light"] {
+  --apple-nav-sidebar-bg: rgba(246, 246, 248, 0.82);
+  --apple-nav-sidebar-border: rgba(60, 60, 67, 0.14);
+  --apple-nav-sidebar-shadow: inset -1px 0 rgba(255, 255, 255, 0.64);
+  --apple-nav-header-bg: rgba(250, 250, 252, 0.78);
+  --apple-nav-active-bg: rgba(0, 122, 255, 0.13);
+  --apple-nav-active-border: rgba(0, 122, 255, 0.28);
+  --apple-nav-hover-bg: rgba(60, 60, 67, 0.08);
+  --apple-nav-control-bg: rgba(120, 120, 128, 0.12);
+  --apple-nav-control-hover-bg: rgba(120, 120, 128, 0.18);
+  --apple-nav-session-current-bg: rgba(60, 60, 67, 0.1);
+}
+
+[data-theme="dark"],
+[data-theme="verydark"] {
+  --apple-nav-sidebar-bg: rgba(30, 30, 32, 0.78);
+  --apple-nav-sidebar-border: rgba(255, 255, 255, 0.12);
+  --apple-nav-sidebar-shadow: inset -1px 0 rgba(255, 255, 255, 0.045);
+  --apple-nav-header-bg: rgba(22, 22, 24, 0.72);
+  --apple-nav-active-bg: rgba(10, 132, 255, 0.18);
+  --apple-nav-active-border: rgba(10, 132, 255, 0.34);
+  --apple-nav-hover-bg: rgba(255, 255, 255, 0.075);
+  --apple-nav-control-bg: rgba(118, 118, 128, 0.2);
+  --apple-nav-control-hover-bg: rgba(118, 118, 128, 0.28);
+  --apple-nav-session-current-bg: rgba(255, 255, 255, 0.09);
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme="auto"] {
+    --apple-nav-sidebar-bg: rgba(30, 30, 32, 0.78);
+    --apple-nav-sidebar-border: rgba(255, 255, 255, 0.12);
+    --apple-nav-sidebar-shadow: inset -1px 0 rgba(255, 255, 255, 0.045);
+    --apple-nav-header-bg: rgba(22, 22, 24, 0.72);
+    --apple-nav-active-bg: rgba(10, 132, 255, 0.18);
+    --apple-nav-active-border: rgba(10, 132, 255, 0.34);
+    --apple-nav-hover-bg: rgba(255, 255, 255, 0.075);
+    --apple-nav-control-bg: rgba(118, 118, 128, 0.2);
+    --apple-nav-control-hover-bg: rgba(118, 118, 128, 0.28);
+    --apple-nav-session-current-bg: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* Page chrome */
+.session-header {
+  background: var(--apple-nav-header-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom-color: var(--apple-nav-sidebar-border);
+}
+
+.session-header-inner {
+  min-height: 46px;
+  padding: 0.4375rem 1rem 0.4375rem 0.5rem;
+}
+
+.session-header::after {
+  height: 12px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--bg-surface) 36%, transparent),
+    transparent
+  );
+}
+
+.session-title,
+.session-title-text {
+  font-weight: 590;
+  letter-spacing: 0;
+}
+
+.project-breadcrumb {
+  color: var(--text-dimmed);
+  font-weight: 500;
+}
+
+/* Sidebar shell */
+.sidebar {
+  background: var(--apple-nav-sidebar-bg);
+  -webkit-backdrop-filter: blur(26px) saturate(185%);
+  backdrop-filter: blur(26px) saturate(185%);
+  border-right-color: var(--apple-nav-sidebar-border);
+  box-shadow: var(--apple-nav-sidebar-shadow);
+}
+
+.sidebar-overlay {
+  background: color-mix(in srgb, var(--bg-overlay) 82%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.sidebar-header {
+  min-height: 48px;
+  padding: 0.625rem 0.75rem 0.5rem;
+}
+
+.sidebar-brand {
+  min-width: 0;
+}
+
+.yep-anywhere-logo {
+  gap: 7px;
+}
+
+.yep-anywhere-logo-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.yep-anywhere-logo-text {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.sidebar-actions {
+  padding: 0 0.5rem 0.375rem;
+}
+
+.sidebar-sessions {
+  padding: 0.125rem 0.5rem 0.875rem;
+  scrollbar-color: color-mix(in srgb, var(--text-dimmed) 42%, transparent)
+    transparent;
+}
+
+.sidebar-nav-section {
+  gap: 0.125rem;
+  padding-bottom: 0.625rem;
+  margin-bottom: 0.625rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Primary navigation rows */
+.sidebar-nav-item,
+a.sidebar-nav-item,
+.sidebar-switch-host {
+  min-height: var(--apple-nav-row-height);
+  padding: 0 0.625rem;
+  border-radius: var(--apple-nav-radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 520;
+  transition: background-color var(--apple-nav-ease), color
+    var(--apple-nav-ease), box-shadow var(--apple-nav-ease);
+}
+
+.sidebar-nav-item:hover,
+.sidebar-switch-host:hover {
+  background: var(--apple-nav-hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-nav-item.active {
+  background: var(--apple-nav-active-bg);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px var(--apple-nav-active-border), inset 0 1px
+    rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-nav-item svg,
+.sidebar-nav-icon svg {
+  width: 17px;
+  height: 17px;
+  color: var(--text-muted);
+  stroke-width: 2.1;
+}
+
+.sidebar-nav-item.active svg {
+  color: var(--primary-color);
+}
+
+.sidebar-nav-text,
+.sidebar-nav-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-nav-badge {
+  min-width: 17px;
+  padding: 1px 5px;
+  background: var(--primary-color);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 15px;
+}
+
+/* Icon buttons */
+.sidebar-toggle,
+.sidebar-close {
+  width: var(--apple-nav-control-size);
+  height: var(--apple-nav-control-size);
+  padding: 0;
+  border-radius: var(--apple-nav-radius-sm);
+  color: var(--text-muted);
+  transition: background-color var(--apple-nav-ease), color
+    var(--apple-nav-ease), transform var(--apple-nav-ease);
+}
+
+.sidebar-toggle:hover,
+.sidebar-close:hover {
+  background: var(--apple-nav-control-hover-bg);
+  color: var(--text-primary);
+}
+
+.sidebar-toggle:active,
+.sidebar-close:active {
+  transform: scale(0.96);
+}
+
+.sidebar-toggle svg,
+.sidebar-close svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+}
+
+/* Recent sessions should read as secondary navigation, not equal to app nav. */
+.sidebar-section {
+  margin: 0 0 0.875rem;
+}
+
+.sidebar-section-title {
+  margin: 0 0 0.25rem;
+  padding: 0.375rem 0.625rem 0.25rem;
+  color: var(--text-dimmed);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sidebar-grouping-toggle {
+  gap: 0.375rem;
+  margin: 0.375rem 0.875rem 0.875rem;
+  padding: 0.25rem;
+}
+
+.sidebar-grouping-toggle button {
+  min-height: 26px;
+  padding: 0.3125rem 0.875rem;
+  letter-spacing: 0;
+}
+
+.sidebar-session-list li {
+  border-radius: var(--apple-nav-radius-sm);
+}
+
+.sidebar-session-list li > a,
+.session-list-item--compact .session-list-item__link {
+  justify-content: flex-start;
+  gap: 0.625rem;
+  min-height: 30px;
+  padding: 0.3125rem 0.75rem;
+  border-radius: var(--apple-nav-radius-sm);
+  color: var(--text-muted);
+  transition: background-color var(--apple-nav-ease), color
+    var(--apple-nav-ease);
+}
+
+.sidebar-project-session-list
+  .session-list-item--compact
+  .session-list-item__link {
+  padding-left: 2.375rem;
+}
+
+.sidebar-session-list li > a:hover,
+.session-list-item--compact .session-list-item__link:hover {
+  background: var(--apple-nav-hover-bg);
+  color: var(--text-secondary);
+}
+
+.sidebar-session-list li.current,
+.session-list-item--compact.current .session-list-item__link {
+  background: var(--apple-nav-session-current-bg);
+}
+
+.sidebar-session-list li.unread > a,
+.sidebar-session-list li.unread .session-list-item__link {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.session-list-item--compact .session-list-item__title-row {
+  flex: 1 1 auto;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.session-list-item--compact .session-list-item__title-text {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.session-list-item__project-compact {
+  max-width: 88px;
+  color: var(--text-dimmed);
+  font-size: 10px;
+}
+
+.session-list-item--compact.unread::before {
+  content: none;
+}
+
+.session-list-item__compact-time {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-dimmed);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.session-list-item__compact-unread {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  margin-left: auto;
+  border-radius: 999px;
+  background: #8ecaff;
+}
+
+.session-draft-badge {
+  padding: 1px 5px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.sidebar-show-more {
+  min-height: 28px;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--apple-nav-radius-sm);
+  color: var(--text-dimmed);
+  font-weight: 520;
+}
+
+.sidebar-show-more:hover {
+  background: var(--apple-nav-hover-bg);
+  color: var(--text-secondary);
+}
+
+.sidebar-empty {
+  color: var(--text-dimmed);
+  font-size: 12px;
+  padding: 0.75rem 0.625rem;
+}
+
+/* Desktop integration */
+@media (min-width: 1100px) {
+  .sidebar-desktop {
+    background: var(--apple-nav-sidebar-bg);
+    border-right-color: var(--apple-nav-sidebar-border);
+  }
+
+  .sidebar-desktop .sidebar {
+    background: transparent;
+  }
+
+  .sidebar-collapsed .sidebar-header {
+    min-height: 48px;
+    padding: 0.5rem;
+  }
+
+  .sidebar-collapsed .sidebar-actions {
+    padding: 0.375rem 0.5rem;
+  }
+
+  .sidebar-collapsed .sidebar-nav-section {
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding: 0.25rem 0;
+  }
+
+  .sidebar-collapsed .sidebar-nav-item {
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: var(--apple-nav-radius);
+  }
+
+  .sidebar-resize-handle:hover,
+  .sidebar-resize-handle.active {
+    background: var(--primary-color);
+    opacity: 0.42;
+  }
+}
+
+/* Mobile drawer quality */
+@media (max-width: 1099px) {
+  .sidebar {
+    width: min(320px, 88vw);
+    max-width: 88vw;
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+    box-shadow: 18px 0 44px rgba(0, 0, 0, 0.22), var(--apple-nav-sidebar-shadow);
+  }
+}
+
+@media (max-width: 600px) {
+  .session-header-inner {
+    min-height: 48px;
+    padding: 0.4375rem 0.5rem;
+  }
+
+  .session-header-left {
+    gap: 0.5rem;
+  }
+
+  .session-title {
+    font-size: 14px;
+    max-width: calc(100vw - 112px);
+  }
+
+  .sidebar-header {
+    padding: 0.75rem 0.75rem 0.5rem;
+  }
+
+  .sidebar-actions,
+  .sidebar-sessions {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+
+  .sidebar-grouping-toggle {
+    gap: 0.5rem;
+    margin: 0.375rem 0.625rem 0.875rem;
+    padding: 0.25rem;
+  }
+
+  .sidebar-grouping-toggle button {
+    min-height: 30px;
+    padding: 0.3125rem 0.75rem;
+    font-size: 12px;
+  }
+
+  .sidebar-project-header {
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+
+  .sidebar-project-session-list
+    .session-list-item--compact
+    .session-list-item__link {
+    padding-left: 2rem;
+  }
+
+  .session-list-item--compact .session-list-item__link {
+    gap: 0.5rem;
+    min-height: 32px;
+    padding: 0.25rem 0.625rem;
+  }
+
+  .session-list-item--compact .session-list-item__title-text {
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .session-list-item__compact-time {
+    color: var(--text-dimmed);
+    font-size: 12px;
+  }
+
+  .session-list-item__compact-unread {
+    width: 7px;
+    height: 7px;
+    flex-basis: 7px;
+  }
+}
+
+.sidebar .session-list-item__menu,
+.sidebar .session-list-item:hover .session-list-item__menu,
+.sidebar .session-list-item:focus-within .session-list-item__menu,
+.sidebar .session-list-item__menu.is-open {
+  width: 0;
+  padding: 0;
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar .session-list-item__menu .session-menu-trigger {
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-nav-item,
+  .sidebar-session-list li > a,
+  .session-list-item--compact .session-list-item__link,
+  .sidebar-toggle,
+  .sidebar-close {
+    transition: none;
+  }
+}

@@ -23,9 +23,51 @@ declare global {
 // Store the deferred prompt globally so it persists across component remounts
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 
+export interface PwaInstallEnvironment {
+  hasNativePrompt: boolean;
+  isAppleMobile: boolean;
+  isStandalone: boolean;
+}
+
+export interface PwaInstallAvailability {
+  canInstall: boolean;
+  isInstalled: boolean;
+  requiresManualInstall: boolean;
+}
+
+export function getPwaInstallAvailability({
+  hasNativePrompt,
+  isAppleMobile,
+  isStandalone,
+}: PwaInstallEnvironment): PwaInstallAvailability {
+  if (isStandalone) {
+    return {
+      canInstall: false,
+      isInstalled: true,
+      requiresManualInstall: false,
+    };
+  }
+
+  return {
+    canInstall: hasNativePrompt,
+    isInstalled: false,
+    requiresManualInstall: !hasNativePrompt && isAppleMobile,
+  };
+}
+
+function isAppleMobileBrowser() {
+  const ua = navigator.userAgent;
+  const platform = navigator.platform;
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 export function usePwaInstall() {
   const [canInstall, setCanInstall] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [requiresManualInstall, setRequiresManualInstall] = useState(false);
 
   useEffect(() => {
     // Check if already installed (standalone mode)
@@ -35,15 +77,20 @@ export function usePwaInstall() {
       ("standalone" in navigator &&
         (navigator as { standalone?: boolean }).standalone === true);
 
-    if (isStandalone) {
-      setIsInstalled(true);
-      return;
-    }
+    const updateAvailability = (hasNativePrompt: boolean) => {
+      const availability = getPwaInstallAvailability({
+        hasNativePrompt,
+        isAppleMobile: isAppleMobileBrowser(),
+        isStandalone,
+      });
+      setCanInstall(availability.canInstall);
+      setIsInstalled(availability.isInstalled);
+      setRequiresManualInstall(availability.requiresManualInstall);
+    };
 
-    // If we already captured the prompt, enable the install button
-    if (deferredPrompt) {
-      setCanInstall(true);
-    }
+    updateAvailability(deferredPrompt !== null);
+
+    if (isStandalone) return;
 
     // Listen for the install prompt event
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
@@ -51,13 +98,14 @@ export function usePwaInstall() {
       e.preventDefault();
       // Store the event for later use
       deferredPrompt = e;
-      setCanInstall(true);
+      updateAvailability(true);
     };
 
     // Listen for successful installation
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setCanInstall(false);
+      setRequiresManualInstall(false);
       deferredPrompt = null;
     };
 
@@ -98,6 +146,8 @@ export function usePwaInstall() {
     canInstall,
     /** Whether the app is already installed (running in standalone mode) */
     isInstalled,
+    /** Whether this browser requires manual share-sheet installation */
+    requiresManualInstall,
     /** Trigger the native install prompt */
     install,
   };

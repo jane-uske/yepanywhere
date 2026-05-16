@@ -5,6 +5,7 @@ import {
   type ProjectOption,
   api,
 } from "../api/client";
+import { isSubagentSession } from "../lib/sessionRelations";
 import {
   type GlobalSessionPatch,
   getCachedGlobalSessions,
@@ -32,6 +33,7 @@ export interface UseGlobalSessionsOptions {
   includeArchived?: boolean;
   starred?: boolean;
   includeStats?: boolean;
+  includeSubagents?: boolean;
 }
 
 /** Default stats when no data loaded */
@@ -52,6 +54,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     includeArchived,
     starred,
     includeStats = false,
+    includeSubagents = false,
   } = options;
   const cacheOptions = useMemo(
     () => ({
@@ -61,8 +64,17 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
       includeArchived,
       starred,
       includeStats,
+      includeSubagents,
     }),
-    [projectId, searchQuery, limit, includeArchived, starred, includeStats],
+    [
+      projectId,
+      searchQuery,
+      limit,
+      includeArchived,
+      starred,
+      includeStats,
+      includeSubagents,
+    ],
   );
   const initialCachedRef = useRef(getCachedGlobalSessions(cacheOptions));
   const initialCached = initialCachedRef.current;
@@ -90,6 +102,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
       if (projectId && session.projectId !== projectId) return false;
       if (!includeArchived && session.isArchived) return false;
       if (starred && !session.isStarred) return false;
+      if (!includeSubagents && isSubagentSession(session)) return false;
 
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -103,7 +116,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
 
       return true;
     },
-    [projectId, includeArchived, starred, searchQuery],
+    [projectId, includeArchived, starred, includeSubagents, searchQuery],
   );
 
   const applySessionPatches = useCallback(
@@ -153,6 +166,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     includeArchived?: boolean;
     starred?: boolean;
     includeStats?: boolean;
+    includeSubagents?: boolean;
   }>({});
 
   const fetch = useCallback(async () => {
@@ -163,7 +177,8 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
       lastFetchOptionsRef.current.limit !== limit ||
       lastFetchOptionsRef.current.includeArchived !== includeArchived ||
       lastFetchOptionsRef.current.starred !== starred ||
-      lastFetchOptionsRef.current.includeStats !== includeStats;
+      lastFetchOptionsRef.current.includeStats !== includeStats ||
+      lastFetchOptionsRef.current.includeSubagents !== includeSubagents;
 
     const cachedForOptions = getCachedGlobalSessions(cacheOptions);
     if (optionsChanged) {
@@ -185,6 +200,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
       includeArchived,
       starred,
       includeStats,
+      includeSubagents,
     };
 
     // Only show loading state on initial load
@@ -204,6 +220,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
         includeArchived,
         starred,
         includeStats: false,
+        includeSubagents,
       });
       const statsPromise =
         includeStats && !projectId ? api.getGlobalSessionStats() : null;
@@ -213,16 +230,20 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
         statsPromise,
       ]);
 
-      patchCachedGlobalSessions(data.sessions);
-      scheduleRecentSessionPrefetch(data.sessions);
+      const visibleSessions = includeSubagents
+        ? data.sessions
+        : data.sessions.filter((session) => !isSubagentSession(session));
+
+      patchCachedGlobalSessions(visibleSessions);
+      scheduleRecentSessionPrefetch(visibleSessions);
 
       if (!hasInitialLoadRef.current || optionsChanged) {
-        setSessions(data.sessions);
+        setSessions(visibleSessions);
         hasInitialLoadRef.current = true;
       } else {
         // On refetch, preserve order and update in-place
         setSessions((prev) => {
-          const newDataMap = new Map(data.sessions.map((s) => [s.id, s]));
+          const newDataMap = new Map(visibleSessions.map((s) => [s.id, s]));
 
           // Update existing sessions in their current order
           const updated = prev.map((existing) => {
@@ -235,7 +256,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
 
           // Add any new sessions at the top
           const existingIds = new Set(prev.map((s) => s.id));
-          const newSessions = data.sessions.filter(
+          const newSessions = visibleSessions.filter(
             (s) => !existingIds.has(s.id),
           );
 
@@ -258,6 +279,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     includeArchived,
     starred,
     includeStats,
+    includeSubagents,
     cacheOptions,
   ]);
 
@@ -277,14 +299,21 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
         includeArchived,
         starred,
         includeStats: false,
+        includeSubagents,
       });
 
-      patchCachedGlobalSessions(data.sessions);
+      const visibleSessions = includeSubagents
+        ? data.sessions
+        : data.sessions.filter((session) => !isSubagentSession(session));
+
+      patchCachedGlobalSessions(visibleSessions);
 
       setSessions((prev) => {
         // Deduplicate when appending
         const existingIds = new Set(prev.map((s) => s.id));
-        const newSessions = data.sessions.filter((s) => !existingIds.has(s.id));
+        const newSessions = visibleSessions.filter(
+          (s) => !existingIds.has(s.id),
+        );
         return [...prev, ...newSessions];
       });
 
@@ -300,6 +329,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
     limit,
     includeArchived,
     starred,
+    includeSubagents,
   ]);
 
   // Debounced refetch
@@ -366,6 +396,9 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
       // If we have a project filter, only add sessions from that project
       if (projectId && event.session.projectId !== projectId) return;
 
+      // Subagent sessions are only shown in explicit parent context surfaces.
+      if (!includeSubagents && isSubagentSession(event.session)) return;
+
       // If we have a starred filter, only add starred sessions
       if (starred && !event.session.isStarred) return;
 
@@ -395,6 +428,7 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
           updatedAt: event.session.updatedAt,
           messageCount: event.session.messageCount,
           provider: event.session.provider,
+          model: event.session.model,
           projectId: event.session.projectId,
           projectName,
           ownership: event.session.ownership,
@@ -404,12 +438,13 @@ export function useGlobalSessions(options: UseGlobalSessionsOptions = {}) {
           customTitle: event.session.customTitle,
           isArchived: event.session.isArchived,
           isStarred: event.session.isStarred,
+          source: event.session.source,
         };
 
         return [globalSession, ...prev];
       });
     },
-    [projectId, searchQuery, starred, debouncedRefetch],
+    [projectId, searchQuery, starred, includeSubagents, debouncedRefetch],
   );
 
   // Handle session metadata changes

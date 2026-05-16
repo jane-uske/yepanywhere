@@ -334,6 +334,46 @@ describe("Global Sessions Routes", () => {
 
       expect(result.sessions).toHaveLength(2);
     });
+
+    it("hides subagent sessions unless ?includeSubagents=true", async () => {
+      const project = createProject("proj1", "project", "/sessions/proj1");
+      const parentSession = createSession("parent", "proj1", minutesAgo(5));
+      const childSession = createSession("child", "proj1", minutesAgo(10), {
+        source: {
+          subagent: {
+            thread_spawn: {
+              parent_thread_id: "parent",
+              depth: 1,
+            },
+          },
+        },
+      });
+      const reviewSession = createSession("review", "proj1", minutesAgo(15), {
+        source: { subagent: "review" },
+      });
+
+      vi.mocked(mockScanner.listProjects).mockResolvedValue([project]);
+      sessionsByDir.set("/sessions/proj1", [
+        parentSession,
+        childSession,
+        reviewSession,
+      ]);
+
+      const defaultResult = await makeRequest();
+      expect(defaultResult.sessions.map((session) => session.id)).toEqual([
+        "parent",
+      ]);
+
+      const statsResult = await makeRequest("?includeStats=true");
+      expect(statsResult.stats.totalCount).toBe(1);
+
+      const includedResult = await makeRequest("?includeSubagents=true");
+      expect(includedResult.sessions.map((session) => session.id)).toEqual([
+        "parent",
+        "child",
+        "review",
+      ]);
+    });
   });
 
   describe("search", () => {

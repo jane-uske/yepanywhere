@@ -313,6 +313,58 @@ describe("session view cache", () => {
     });
   });
 
+  it("hides subagent sessions from global session views unless explicitly included", async () => {
+    const parentSession = makeGlobalSession("parent-session");
+    const childSession = makeGlobalSession("child-session", {
+      source: {
+        subagent: {
+          thread_spawn: {
+            parent_thread_id: "parent-session",
+            depth: 1,
+          },
+        },
+      },
+    });
+    const reviewSession = makeGlobalSession("review-session", {
+      source: { subagent: "review" },
+    });
+    const projects: ProjectOption[] = [{ id: "project-1", name: "Project" }];
+
+    mockApi.getGlobalSessions.mockResolvedValue({
+      sessions: [parentSession, childSession, reviewSession],
+      stats: makeStats(),
+      projects,
+      hasMore: false,
+    });
+    mockApi.getGlobalSessionStats.mockResolvedValue({ stats: makeStats() });
+
+    const hiddenByDefault = renderHook(() =>
+      useGlobalSessions({ includeStats: false, limit: 50 }),
+    );
+
+    await waitFor(() => {
+      expect(hiddenByDefault.result.current.sessions.map((s) => s.id)).toEqual([
+        "parent-session",
+      ]);
+    });
+
+    const included = renderHook(() =>
+      useGlobalSessions({
+        includeStats: false,
+        includeSubagents: true,
+        limit: 50,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(included.result.current.sessions.map((s) => s.id)).toEqual([
+        "parent-session",
+        "child-session",
+        "review-session",
+      ]);
+    });
+  });
+
   it("syncs session title updates between cached global session views", async () => {
     const staleSession: GlobalSessionItem = {
       id: "session-1",

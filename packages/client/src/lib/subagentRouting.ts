@@ -22,6 +22,33 @@ export function extractAgentId(msg: { session_id?: string }): string | null {
 }
 
 /**
+ * Extract the agent content key for a subagent stream or final message.
+ *
+ * Legacy SDK messages carry parentToolUseId. SDK 0.2.76+ sidechain messages
+ * carry agentId without parentToolUseId.
+ */
+export function getSubagentContentAgentId(msg: {
+  [key: string]: unknown;
+  isSubagent?: unknown;
+  parentToolUseId?: unknown;
+  agentId?: unknown;
+}): string | undefined {
+  if (!msg.isSubagent) {
+    return undefined;
+  }
+
+  if (typeof msg.parentToolUseId === "string") {
+    return msg.parentToolUseId;
+  }
+
+  if (typeof msg.agentId === "string") {
+    return msg.agentId;
+  }
+
+  return undefined;
+}
+
+/**
  * Add a message to the agent content map.
  * Returns a new map with the message added (immutable update).
  * Deduplicates by message ID using getMessageId (prefers uuid over id).

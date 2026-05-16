@@ -329,7 +329,11 @@ describe("useStreamingContent", () => {
         });
       });
 
-      expect(onToolUseMapping).toHaveBeenCalledWith("tool-456", "tool-456");
+      expect(onToolUseMapping).toHaveBeenCalledWith(
+        "tool-456",
+        "tool-456",
+        "parentToolUseId",
+      );
       expect(onUpdateMessage).toHaveBeenCalledWith(
         expect.objectContaining({ _isStreaming: true }),
         "tool-456", // agentId is passed
@@ -368,6 +372,7 @@ describe("useStreamingContent", () => {
       expect(onToolUseMapping).toHaveBeenCalledWith(
         "a1dd713c82c78b9ed",
         "a1dd713c82c78b9ed",
+        "agentId",
       );
       expect(onUpdateMessage).toHaveBeenCalledWith(
         expect.objectContaining({ _isStreaming: true }),

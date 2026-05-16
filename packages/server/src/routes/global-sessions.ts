@@ -64,6 +64,7 @@ export interface GlobalSessionItem {
   updatedAt: string;
   messageCount: number;
   provider: ProviderName;
+  model?: string;
   // Project context
   projectId: string;
   projectName: string;
@@ -75,6 +76,7 @@ export interface GlobalSessionItem {
   customTitle?: string;
   isArchived?: boolean;
   isStarred?: boolean;
+  source?: unknown;
   /** SSH host alias for remote execution (undefined = local) */
   executor?: string;
 }
@@ -123,6 +125,14 @@ function createEmptyStats(): GlobalSessionStats {
     providerCounts: {},
     executorCounts: {},
   };
+}
+
+function isSubagentSource(source: unknown): boolean {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return false;
+  }
+
+  return "subagent" in source;
 }
 
 export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
@@ -188,6 +198,8 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
     for (const project of projects) {
       const sessions = await listSessionsForProject(project, providerCatalog);
       for (const session of sessions) {
+        if (isSubagentSource(session.source)) continue;
+
         const metadata = deps.sessionMetadataService?.getMetadata(session.id);
         const isArchived = metadata?.isArchived ?? session.isArchived ?? false;
         const isStarred = metadata?.isStarred ?? session.isStarred ?? false;
@@ -267,6 +279,7 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
     const includeArchived = c.req.query("includeArchived") === "true";
     const starredOnly = c.req.query("starred") === "true";
     const includeStats = c.req.query("includeStats") === "true";
+    const includeSubagents = c.req.query("includeSubagents") === "true";
     const limitParam = c.req.query("limit");
     const limit = Math.min(
       Math.max(1, Number.parseInt(limitParam || "", 10) || DEFAULT_LIMIT),
@@ -316,6 +329,9 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
 
         // Skip non-starred sessions if starred filter is active
         if (starredOnly && !isStarred) continue;
+
+        // Subagent sessions are reached through their parent session context.
+        if (!includeSubagents && isSubagentSource(session.source)) continue;
 
         // Compute status
         const process = deps.supervisor?.getProcessForSession(session.id);
@@ -374,6 +390,7 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
           updatedAt: session.updatedAt,
           messageCount: session.messageCount,
           provider: session.provider,
+          model: session.model,
           projectId: session.projectId,
           projectName: project.name,
           ownership,
@@ -383,6 +400,7 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
           customTitle,
           isArchived,
           isStarred,
+          source: session.source,
           executor,
         });
       }

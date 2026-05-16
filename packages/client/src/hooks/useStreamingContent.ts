@@ -27,6 +27,8 @@ export interface ContextUsage {
   percentage: number;
 }
 
+export type SubagentMappingSource = "parentToolUseId" | "agentId";
+
 /** Options for useStreamingContent hook */
 export interface UseStreamingContentOptions {
   /** Called when a streaming message needs to be updated in state */
@@ -34,7 +36,11 @@ export interface UseStreamingContentOptions {
   /** Streaming markdown callbacks (passed through) */
   streamingMarkdownCallbacks?: StreamingMarkdownCallbacks;
   /** Callback when toolUseId→agentId mapping is discovered */
-  onToolUseMapping?: (toolUseId: string, agentId: string) => void;
+  onToolUseMapping?: (
+    toolUseId: string,
+    agentId: string,
+    source: SubagentMappingSource,
+  ) => void;
   /** Callback for agent context usage updates */
   onAgentContextUsage?: (agentId: string, usage: ContextUsage) => void;
   /** Fallback context window size when stream metadata doesn't include one */
@@ -167,13 +173,17 @@ export function useStreamingContent(
         data.isSubagent &&
         (typeof data.parentToolUseId === "string" ||
           typeof data.agentId === "string");
+      const hasParentToolUseId = typeof data.parentToolUseId === "string";
       const streamAgentId = isSubagentStream
         ? ((data.parentToolUseId as string) ?? (data.agentId as string))
         : undefined;
+      const mappingSource: SubagentMappingSource = hasParentToolUseId
+        ? "parentToolUseId"
+        : "agentId";
 
       // Set toolUseToAgent mapping for subagent streams so TaskRenderer can find content
       if (streamAgentId && onToolUseMapping) {
-        onToolUseMapping(streamAgentId, streamAgentId);
+        onToolUseMapping(streamAgentId, streamAgentId, mappingSource);
       }
 
       // Handle message_start to capture the message ID for this streaming response

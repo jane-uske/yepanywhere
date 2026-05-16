@@ -11,6 +11,7 @@ import { initializeFontSize } from "./hooks/useFontSize";
 import { initializeTabSize } from "./hooks/useTabSize";
 import { initializeTheme } from "./hooks/useTheme";
 import { NavigationLayout } from "./layouts";
+import { initializeDisplayModeClasses } from "./lib/displayMode";
 import { ActivityPage } from "./pages/ActivityPage";
 import { AgentsPage } from "./pages/AgentsPage";
 import { EmulatorPage } from "./pages/EmulatorPage";
@@ -24,11 +25,16 @@ import { ProjectsPage } from "./pages/ProjectsPage";
 import { SessionPage } from "./pages/SessionPage";
 import { SettingsLayout } from "./pages/settings";
 import "./styles/index.css";
+import "./styles/apple-foundation.css";
+import "./styles/apple-navigation.css";
+import "./styles/apple-lists.css";
+import "./styles/apple-session.css";
 
 // Apply saved preferences before React renders to avoid flash
 initializeTheme();
 initializeFontSize();
 initializeTabSize();
+initializeDisplayModeClasses();
 
 // SSE activity stream connection is managed by useActivityBusConnection hook
 // in App.tsx, which connects only when authenticated (or auth is disabled)

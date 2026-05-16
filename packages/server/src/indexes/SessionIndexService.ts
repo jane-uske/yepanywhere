@@ -47,15 +47,17 @@ export interface CachedSessionSummary {
   provider: ProviderName;
   /** Model used for this session (e.g. "gemini-2.5-pro") */
   model?: string;
+  /** Session source metadata, including Codex structured subagent sources. */
+  source?: unknown;
 }
 
 export interface SessionIndexState {
-  version: 1;
+  version: 2;
   projectId: string;
   sessions: Record<string, CachedSessionSummary>;
 }
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 export interface SessionIndexServiceOptions {
   /** Directory to store index files (defaults to ~/.yep-anywhere/indexes) */
@@ -463,6 +465,7 @@ export class SessionIndexService implements ISessionIndexService {
         contextUsage: cached.contextUsage,
         provider: cached.provider ?? DEFAULT_PROVIDER,
         model: cached.model,
+        source: cached.source,
       });
     }
 
@@ -492,6 +495,7 @@ export class SessionIndexService implements ISessionIndexService {
       summaryCacheToken,
       provider: summary.provider,
       model: summary.model,
+      source: summary.source,
     };
   }
 
@@ -773,6 +777,7 @@ export class SessionIndexService implements ISessionIndexService {
             contextUsage: cached.contextUsage,
             provider: cached.provider ?? DEFAULT_PROVIDER,
             model: cached.model,
+            source: cached.source,
           });
         } else {
           cacheMisses.push({ sessionId, mtime, size, summaryCacheToken });

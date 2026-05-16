@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  type ForwardedRef,
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { api } from "../api/client";
 import { useI18n } from "../i18n";
@@ -34,26 +42,49 @@ export interface SessionMenuProps {
   useFixedPositioning?: boolean;
 }
 
-export function SessionMenu({
-  sessionId,
-  projectId,
-  isStarred,
-  isArchived,
-  hasUnread,
-  provider,
-  processId,
-  onToggleStar,
-  onToggleArchive,
-  onToggleRead,
-  onRename,
-  onClone,
-  onTerminate,
-  sharingConfigured,
-  onShare,
-  useEllipsisIcon = false,
-  className = "",
-  useFixedPositioning = false,
-}: SessionMenuProps) {
+export interface SessionMenuHandle {
+  openAt: (position: { x: number; y: number }) => void;
+  close: () => void;
+}
+
+const FIXED_MENU_WIDTH = 168;
+const FIXED_MENU_HEIGHT = 260;
+const FIXED_MENU_MARGIN = 8;
+
+const clampFixedPosition = (x: number, y: number) => ({
+  top: Math.max(
+    FIXED_MENU_MARGIN,
+    Math.min(y, window.innerHeight - FIXED_MENU_HEIGHT - FIXED_MENU_MARGIN),
+  ),
+  left: Math.max(
+    FIXED_MENU_MARGIN,
+    Math.min(x, window.innerWidth - FIXED_MENU_WIDTH - FIXED_MENU_MARGIN),
+  ),
+});
+
+function SessionMenuImpl(
+  {
+    sessionId,
+    projectId,
+    isStarred,
+    isArchived,
+    hasUnread,
+    provider,
+    processId,
+    onToggleStar,
+    onToggleArchive,
+    onToggleRead,
+    onRename,
+    onClone,
+    onTerminate,
+    sharingConfigured,
+    onShare,
+    useEllipsisIcon = false,
+    className = "",
+    useFixedPositioning = false,
+  }: SessionMenuProps,
+  ref: ForwardedRef<SessionMenuHandle>,
+) {
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
@@ -68,6 +99,32 @@ export function SessionMenu({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const closeMenu = useCallback(() => {
+    setIsOpen(false);
+    setDropdownPosition(null);
+    triggerRef.current?.blur();
+  }, []);
+
+  const openAt = useCallback(
+    (position: { x: number; y: number }) => {
+      if (useFixedPositioning) {
+        setDropdownPosition(clampFixedPosition(position.x, position.y));
+      }
+      setIsOpen(true);
+      triggerRef.current?.focus();
+    },
+    [useFixedPositioning],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openAt,
+      close: closeMenu,
+    }),
+    [closeMenu, openAt],
+  );
+
   // Close menu when clicking outside or scrolling (mobile)
   useEffect(() => {
     if (!isOpen) return;
@@ -77,8 +134,7 @@ export function SessionMenu({
       const clickedInWrapper = wrapperRef.current?.contains(target);
       const clickedInDropdown = dropdownRef.current?.contains(target);
       if (!clickedInWrapper && !clickedInDropdown) {
-        setIsOpen(false);
-        triggerRef.current?.blur();
+        closeMenu();
       }
     };
     const handleScroll = (e: Event) => {
@@ -92,9 +148,7 @@ export function SessionMenu({
       ) {
         return; // Scroll is not in an ancestor of the menu, ignore
       }
-      setIsOpen(false);
-      setDropdownPosition(null);
-      triggerRef.current?.blur();
+      closeMenu();
     };
     document.addEventListener("mousedown", handleClickOutside);
     document.addEventListener("scroll", handleScroll, true);
@@ -102,13 +156,11 @@ export function SessionMenu({
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("scroll", handleScroll, true);
     };
-  }, [isOpen]);
+  }, [closeMenu, isOpen]);
 
   const handleToggleOpen = () => {
     if (isOpen) {
-      setIsOpen(false);
-      setDropdownPosition(null);
-      triggerRef.current?.blur();
+      closeMenu();
     } else {
       // Calculate position synchronously before opening to avoid flicker
       if (useFixedPositioning && triggerRef.current) {
@@ -145,18 +197,14 @@ export function SessionMenu({
   };
 
   const handleAction = (action: () => void | Promise<void>) => {
-    setIsOpen(false);
-    setDropdownPosition(null);
-    triggerRef.current?.blur();
+    closeMenu();
     action();
   };
 
   const handleClone = async () => {
     if (isCloning) return;
     setIsCloning(true);
-    setIsOpen(false);
-    setDropdownPosition(null);
-    triggerRef.current?.blur();
+    closeMenu();
     try {
       const result = await api.cloneSession(
         projectId,
@@ -175,9 +223,7 @@ export function SessionMenu({
   const handleTerminate = async () => {
     if (isTerminating || !onTerminate) return;
     setIsTerminating(true);
-    setIsOpen(false);
-    setDropdownPosition(null);
-    triggerRef.current?.blur();
+    closeMenu();
     try {
       await onTerminate();
     } catch (error) {
@@ -190,9 +236,7 @@ export function SessionMenu({
   const handleShare = async () => {
     if (isSharing || !onShare) return;
     setIsSharing(true);
-    setIsOpen(false);
-    setDropdownPosition(null);
-    triggerRef.current?.blur();
+    closeMenu();
     try {
       await onShare();
     } catch (error) {
@@ -217,8 +261,8 @@ export function SessionMenu({
         position: "fixed" as const,
         top: dropdownPosition?.top ?? 100,
         ...(dropdownPosition?.left !== undefined
-          ? { left: dropdownPosition.left }
-          : { right: dropdownPosition?.right ?? 20 }),
+          ? { left: dropdownPosition.left, right: "auto" as const }
+          : { left: "auto" as const, right: dropdownPosition?.right ?? 20 }),
       }
     : undefined;
 
@@ -413,3 +457,7 @@ export function SessionMenu({
     </div>
   );
 }
+
+export const SessionMenu = forwardRef<SessionMenuHandle, SessionMenuProps>(
+  SessionMenuImpl,
+);

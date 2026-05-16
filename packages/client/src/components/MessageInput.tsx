@@ -135,6 +135,7 @@ export function MessageInput({
   const textareaRows = collapsed || hasCoarsePointer() ? 1 : 3;
 
   const canAttach = !!(projectId && sessionId && onAttach);
+  const canSend = !!(text.trim() || attachments.length > 0);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -420,6 +421,59 @@ export function MessageInput({
           onChange={handleFileSelect}
         />
 
+        {collapsed && (
+          <div className="message-input-collapsed-actions">
+            {onQueue && canSend && (
+              <button
+                type="button"
+                onClick={handleQueue}
+                className="queue-button"
+                title={t("toolbarQueueTitle")}
+                aria-label={t("toolbarQueueLabel")}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </button>
+            )}
+            {isRunning && onStop && isThinking && !canSend ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="stop-button"
+                aria-label={t("toolbarStop")}
+              >
+                <span className="stop-icon" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={disabled || !canSend}
+                className="send-button"
+                aria-label={t("toolbarSend")}
+              >
+                <span className="send-icon">↑</span>
+              </button>
+            )}
+          </div>
+        )}
+
         {!collapsed && (
           <MessageInputToolbar
             mode={mode}
@@ -444,7 +498,7 @@ export function MessageInput({
             onStop={onStop}
             onSend={handleSubmit}
             onQueue={onQueue ? handleQueue : undefined}
-            canSend={!!(text.trim() || attachments.length > 0)}
+            canSend={canSend}
             disabled={disabled}
           />
         )}

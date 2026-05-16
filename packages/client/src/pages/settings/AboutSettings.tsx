@@ -10,7 +10,8 @@ import { activityBus } from "../../lib/activityBus";
 
 export function AboutSettings() {
   const { t } = useI18n();
-  const { canInstall, isInstalled, install } = usePwaInstall();
+  const { canInstall, isInstalled, requiresManualInstall, install } =
+    usePwaInstall();
   const {
     version: versionInfo,
     loading: versionLoading,
@@ -61,20 +62,26 @@ export function AboutSettings() {
     <section className="settings-section">
       <h2>{t("aboutTitle")}</h2>
       <div className="settings-group">
-        {/* Only show Install option if install is possible or already installed */}
-        {(canInstall || isInstalled) && (
+        {/* iOS Safari does not expose a native install prompt, so show manual steps. */}
+        {(canInstall || isInstalled || requiresManualInstall) && (
           <div className="settings-item">
             <div className="settings-item-info">
               <strong>{t("aboutInstallTitle")}</strong>
               <p>
                 {isInstalled
                   ? t("aboutInstalledDescription")
-                  : t("aboutInstallDescription")}
+                  : requiresManualInstall
+                    ? t("aboutInstallManualDescription")
+                    : t("aboutInstallDescription")}
               </p>
             </div>
             {isInstalled ? (
               <span className="settings-status-badge">
                 {t("aboutInstalled")}
+              </span>
+            ) : requiresManualInstall ? (
+              <span className="settings-status-badge">
+                {t("aboutInstallManualBadge")}
               </span>
             ) : (
               <button

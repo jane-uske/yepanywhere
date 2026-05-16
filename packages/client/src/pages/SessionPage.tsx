@@ -10,6 +10,7 @@ import { ProcessInfoModal } from "../components/ProcessInfoModal";
 import { ProviderBadge } from "../components/ProviderBadge";
 import { QuestionAnswerPanel } from "../components/QuestionAnswerPanel";
 import { RecentSessionsDropdown } from "../components/RecentSessionsDropdown";
+import { SessionContextPanel } from "../components/SessionContextPanel";
 import { SessionMenu } from "../components/SessionMenu";
 import { ThinkingSwitchModal } from "../components/ThinkingSwitchModal";
 import { ToolApprovalPanel } from "../components/ToolApprovalPanel";
@@ -44,6 +45,10 @@ import {
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
 import { getCodexSlashCommandsForSession } from "../lib/codexSlashCommands";
+import {
+  formatShortSessionId,
+  getSessionSourceInfo,
+} from "../lib/sessionSource";
 import { generateUUID } from "../lib/uuid";
 import { getSessionDisplayTitle } from "../utils";
 
@@ -183,6 +188,23 @@ function SessionPageContent({
   // Effective provider/model for immediate display before session data loads
   const effectiveProvider = session?.provider ?? initialProvider;
   const effectiveModel = session?.model ?? initialModel;
+  const hasSessionContextPanel =
+    isWideScreen &&
+    (effectiveProvider === "codex" || effectiveProvider === "codex-oss");
+  const [isSessionContextCollapsed, setIsSessionContextCollapsed] =
+    useState(false);
+  const showSessionContextPanel =
+    hasSessionContextPanel && !isSessionContextCollapsed;
+  const sessionSourceInfo = useMemo(
+    () => getSessionSourceInfo(session?.source),
+    [session?.source],
+  );
+
+  useEffect(() => {
+    if (!hasSessionContextPanel) {
+      setIsSessionContextCollapsed(false);
+    }
+  }, [hasSessionContextPanel]);
 
   const [scrollTrigger, setScrollTrigger] = useState(0);
   const draftControlsRef = useRef<DraftControls | null>(null);
@@ -936,7 +958,19 @@ function SessionPageContent({
 
   return (
     <div
-      className={isWideScreen ? "main-content-wrapper" : "main-content-mobile"}
+      className={
+        isWideScreen
+          ? [
+              "main-content-wrapper",
+              showSessionContextPanel && "with-session-context",
+              hasSessionContextPanel &&
+                isSessionContextCollapsed &&
+                "with-session-context-collapsed",
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : "main-content-mobile"
+      }
     >
       <div
         className={
@@ -1049,6 +1083,18 @@ function SessionPageContent({
                 {!loading && isArchived && (
                   <span className="archived-badge">
                     {t("sessionArchivedBadge")}
+                  </span>
+                )}
+                {!loading && sessionSourceInfo?.parentThreadId && (
+                  <span
+                    className="subagent-parent-badge"
+                    title={sessionSourceInfo.parentThreadId}
+                  >
+                    {t("sessionSubagentParent", {
+                      id: formatShortSessionId(
+                        sessionSourceInfo.parentThreadId,
+                      ),
+                    })}
                   </span>
                 )}
                 {!loading && (
@@ -1289,6 +1335,47 @@ function SessionPageContent({
           </div>
         </footer>
       </div>
+      {showSessionContextPanel && session && (
+        <SessionContextPanel
+          basePath={basePath}
+          currentSession={session}
+          messages={messages}
+          status={status}
+          processState={processState}
+          actualSessionId={actualSessionId}
+          projectName={project?.name}
+          onCollapse={() => setIsSessionContextCollapsed(true)}
+        />
+      )}
+      {hasSessionContextPanel && session && isSessionContextCollapsed && (
+        <aside
+          className="session-context-panel-rail"
+          aria-label={t("sessionInspectorTitle")}
+        >
+          <button
+            type="button"
+            className="session-context-toggle session-context-toggle-rail"
+            onClick={() => setIsSessionContextCollapsed(false)}
+            title={t("sessionInspectorExpand")}
+            aria-label={t("sessionInspectorExpand")}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <line x1="9" y1="4" x2="9" y2="20" />
+            </svg>
+          </button>
+        </aside>
+      )}
     </div>
   );
 }

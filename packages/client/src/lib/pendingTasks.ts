@@ -78,3 +78,23 @@ export function findPendingTasks(messages: Message[]): PendingTask[] {
       subagentType,
     }));
 }
+
+/**
+ * Resolve an agentId-only subagent stream to the single pending Task that can
+ * own it. This covers SDKs that emit sidechain agentId without parentToolUseId.
+ */
+export function findUnmappedPendingTaskForAgent(
+  messages: Message[],
+  toolUseToAgent: Map<string, string>,
+): PendingTask | undefined {
+  const mappedToolUseIds = new Set(toolUseToAgent.keys());
+  const unmappedPendingTasks = findPendingTasks(messages).filter(
+    (task) => !mappedToolUseIds.has(task.toolUseId),
+  );
+
+  if (unmappedPendingTasks.length !== 1) {
+    return undefined;
+  }
+
+  return unmappedPendingTasks[0];
+}
