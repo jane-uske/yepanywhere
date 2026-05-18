@@ -24,15 +24,15 @@ describe("Page Agent preflight", () => {
     expect(res.status).toBe(200);
     expect(json.service).toBe("yep-anywhere");
     expect(json.capability).toBe("page-agent");
-    expect(json.origin).toBe("http://localhost:3400");
+    expect(json.origin).toBe("https://localhost:3400");
     expect(json.target.kind).toBe("session");
     expect(json.urls.targetEmbedUrl).toBe(
-      "http://localhost:3400/projects/L2hvbWUvYWRtaW4/sessions/fc624e64-ded8-4673-9105-f0fcb6600319?mode=page-agent&host=chrome-extension",
+      "https://localhost:3400/projects/L2hvbWUvYWRtaW4/sessions/fc624e64-ded8-4673-9105-f0fcb6600319?mode=page-agent&host=chrome-extension",
     );
-    expect(json.urls.websocketUrl).toBe("ws://localhost:3400/api/ws");
+    expect(json.urls.websocketUrl).toBe("wss://localhost:3400/api/ws");
   });
 
-  it("preserves existing target query params when adding KPA params", async () => {
+  it("preserves existing target query params when adding page-agent params", async () => {
     const routes = createPageAgentRoutes();
 
     const res = await routes.request(
