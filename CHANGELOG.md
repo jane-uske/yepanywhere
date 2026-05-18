@@ -7,16 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.32] - 2026-05-18
+
+### Changed
+- Rebrand Kimi Page Agent to generic Page Agent browser extension support.
+- Remove all internal/vendor-specific references for clean open-source release.
+
 ## [0.4.31] - 2026-05-18
 
 ### Added
-- Integrate Kimi Page Agent browser extension bridge for contextual AI assistance.
-- Add KimiPageAgentPanel component and context store for client-side extension communication.
-- Add server-side Kimi Page Agent routes for extension API proxying.
-- Add Apple-style session theme and UI polish.
+- Page Agent browser extension bridge for contextual AI assistance.
+- PageAgentPanel component and context store for client-side extension communication.
+- Server-side Page Agent routes for extension API proxying.
+- Apple-style session theme and UI polish.
 
 ### Changed
-- Update Claude provider configuration for AIDC deployment.
 - Enhance MessageList, MessageInput, and SessionPage for improved mobile UX.
 
 ## [0.4.30] - 2026-05-12
