@@ -103,6 +103,23 @@ function enrichClaudeModel(model: ModelInfo): ModelInfo {
   };
 }
 
+/**
+ * Map versioned model IDs (e.g. "claude-opus-4-6") back to CLI aliases
+ * ("opus") so they are accepted by `claude --model`.
+ */
+function normalizeClaudeModelId(
+  modelId: string | undefined,
+): string | undefined {
+  if (!modelId) return modelId;
+  const known = CLAUDE_MODELS_FALLBACK.map((m) => m.id);
+  if (known.includes(modelId)) return modelId;
+  const lower = modelId.toLowerCase();
+  if (lower.includes("opus")) return "opus";
+  if (lower.includes("sonnet")) return "sonnet";
+  if (lower.includes("haiku")) return "haiku";
+  return undefined; // fall back to CLI default
+}
+
 function mergeClaudeModels(models: ModelInfo[]): ModelInfo[] {
   const byId = new Map<string, ModelInfo>();
 
@@ -110,18 +127,17 @@ function mergeClaudeModels(models: ModelInfo[]): ModelInfo[] {
     byId.set(model.id, enrichClaudeModel(model));
   }
 
+  // Only use probed models to enrich existing fallback aliases, not to add
+  // new versioned model IDs (e.g. "claude-opus-4-7") that Claude Code rejects.
   for (const model of models) {
-    byId.set(model.id, enrichClaudeModel(model));
+    if (byId.has(model.id)) {
+      byId.set(model.id, enrichClaudeModel(model));
+    }
   }
 
-  const orderedIds = [
-    ...CLAUDE_MODELS_FALLBACK.map((model) => model.id),
-    ...models.map((model) => model.id),
-  ];
-
-  return [...new Set(orderedIds)]
-    .map((id) => byId.get(id))
-    .filter((model): model is ModelInfo => model !== undefined);
+  return CLAUDE_MODELS_FALLBACK.map((model) => byId.get(model.id)).filter(
+    (model): model is ModelInfo => model !== undefined,
+  );
 }
 
 /** Cached models from SDK probe */
@@ -473,7 +489,7 @@ export class ClaudeProvider implements AgentProvider {
           settingSources: ["user", "project", "local"],
           includePartialMessages: true,
           // Model, thinking, and effort options
-          model: options.model,
+          model: normalizeClaudeModelId(options.model),
           thinking: options.thinking,
           effort: options.effort,
           // Filter env to exclude npm_*, yep-anywhere specific, and other irrelevant vars

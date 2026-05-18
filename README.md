@@ -1,3 +1,15 @@
+## Aidc-PageAgent Internal Build
+
+This fork packages the Yep Anywhere host with Aidc-pageAgent browser-extension
+integration. Install the internal CLI with:
+
+```bash
+tnpm i -g @ali/aidc-page-agent@beta
+aidc-page-agent --port 3460
+```
+
+The Chrome extension is still distributed separately from the CLI package.
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="site/public/branding/lockup-dark.svg">

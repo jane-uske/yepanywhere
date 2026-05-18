@@ -10,6 +10,7 @@ import { useRecentProjects } from "../hooks/useRecentProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useVersion } from "../hooks/useVersion";
 import { useI18n } from "../i18n";
+import { isKimiPageAgentMode } from "../lib/kimiPageAgentBridge";
 import { buildSidebarProjectGroups } from "../lib/sidebarProjectGroups";
 import { getSessionDisplayTitle, toUrlProjectId } from "../utils";
 import { AgentsNavItem } from "./AgentsNavItem";
@@ -71,6 +72,7 @@ export function Sidebar({
   const { t } = useI18n();
   // Get base path for relay mode (e.g., "/remote/my-server")
   const basePath = useRemoteBasePath();
+  const kimiPageAgentMode = isKimiPageAgentMode();
   const navigate = useNavigate();
   const remoteConnection = useOptionalRemoteConnection();
 
@@ -426,7 +428,9 @@ export function Sidebar({
             : undefined
         }
       >
-        <div className="sidebar-header">
+        <div
+          className={`sidebar-header ${kimiPageAgentMode ? (isDesktop ? "sidebar-header-brandless-desktop" : "sidebar-header-brandless") : ""}`}
+        >
           {isDesktop && isCollapsed ? (
             /* Desktop collapsed mode: show toggle button to expand */
             <button
@@ -440,15 +444,19 @@ export function Sidebar({
             </button>
           ) : isDesktop ? (
             /* Desktop expanded mode: show brand (toggle is in toolbar) */
-            <span className="sidebar-brand">
-              <YepAnywhereLogo />
-            </span>
-          ) : (
-            /* Mobile mode: brand text + close button */
-            <>
+            !kimiPageAgentMode && (
               <span className="sidebar-brand">
                 <YepAnywhereLogo />
               </span>
+            )
+          ) : (
+            /* Mobile mode: brand text + close button */
+            <>
+              {!kimiPageAgentMode && (
+                <span className="sidebar-brand">
+                  <YepAnywhereLogo />
+                </span>
+              )}
               <button
                 type="button"
                 className="sidebar-close"

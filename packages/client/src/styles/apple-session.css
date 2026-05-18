@@ -436,7 +436,7 @@
     padding: 0.42rem 0.58rem;
   }
 
-  .session-page .session-input {
+  .session-page .session-input-inner {
     padding: 0.5rem 0.5rem calc(0.56rem + env(safe-area-inset-bottom, 0px));
   }
 
@@ -494,5 +494,40 @@
   .session-page .question-btn {
     min-width: 0;
     padding: 0.5rem 0.55rem;
+  }
+}
+
+/* Liquid glass effect for floating header/footer on mobile.
+   backdrop-filter is on ::before to avoid Safari's sticky rendering bug. */
+@media (max-width: 1099px) {
+  .session-page .session-header {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: none;
+  }
+
+  .session-page .session-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    backdrop-filter: blur(28px) saturate(200%);
+    border-bottom: 0.5px solid
+      color-mix(in srgb, var(--border-subtle) 60%, transparent);
+    z-index: -1;
+  }
+
+  .session-page .session-header::after {
+    display: none;
+  }
+
+  .session-page .session-input-inner {
+    background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
+    -webkit-backdrop-filter: blur(28px) saturate(200%);
+    backdrop-filter: blur(28px) saturate(200%);
+    border-top: 0.5px solid
+      color-mix(in srgb, var(--border-subtle) 60%, transparent);
   }
 }

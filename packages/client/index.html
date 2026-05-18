@@ -8,18 +8,19 @@
     <link rel="icon" href="/icon-192.png?v=apple-blue" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/icon-192.png?v=apple-blue" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1a1a2e" />
+    <meta name="theme-color" content="#000000" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Yep Anywhere" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <style>
       /* Critical CSS to prevent flash of white background - only html, body/root handled by main CSS */
-      html { background-color: #181818; }
-      html[data-theme="light"] { background-color: #faf9f5; }
-      html[data-theme="dark"] { background-color: #2f2f2f; }
+      html { background-color: #000000; }
+      html[data-theme="verydark"] { background-color: #000000; }
+      html[data-theme="light"] { background-color: #f5f5f7; }
+      html[data-theme="dark"] { background-color: #161617; }
       @media (prefers-color-scheme: light) {
-        html:not([data-theme]) { background-color: #faf9f5; }
+        html:not([data-theme]) { background-color: #f5f5f7; }
       }
     </style>
     <script>
@@ -28,6 +29,9 @@
         var stored = localStorage.getItem('yep-anywhere-theme');
         var theme = stored || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'verydark');
         document.documentElement.setAttribute('data-theme', theme);
+        var colors = { verydark: '#000000', dark: '#161617', light: '#f5f5f7' };
+        var color = colors[theme] || (window.matchMedia('(prefers-color-scheme: light)').matches ? colors.light : colors.dark);
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', color);
       })();
     </script>
   </head>

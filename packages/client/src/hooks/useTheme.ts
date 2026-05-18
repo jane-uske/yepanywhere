@@ -16,9 +16,33 @@ export function getThemeLabel(theme: Theme): string {
   return themeLabels[theme];
 }
 
+const THEME_COLORS = {
+  verydark: "#000000",
+  dark: "#161617",
+  light: "#f5f5f7",
+  auto: "#161617",
+} satisfies Record<Theme, string>;
+
+function getThemeColor(theme: Theme): string {
+  if (theme === "auto") {
+    return window.matchMedia("(prefers-color-scheme: light)").matches
+      ? THEME_COLORS.light
+      : THEME_COLORS.dark;
+  }
+  return THEME_COLORS[theme];
+}
+
+function updateThemeColorMeta(theme: Theme) {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) {
+    meta.setAttribute("content", getThemeColor(theme));
+  }
+}
+
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
   root.setAttribute("data-theme", theme);
+  updateThemeColorMeta(theme);
 }
 
 function loadTheme(): Theme {

@@ -8,6 +8,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { type Context, Hono } from "hono";
 
+const DEFAULT_FRAME_ANCESTORS = [
+  "'self'",
+  "tauri://localhost",
+  "https://tauri.localhost",
+  "chrome-extension:",
+];
+
 export interface StaticServeOptions {
   /** Path to the built client dist directory */
   distPath: string;
@@ -83,8 +90,7 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
 
         // Add CSP frame-ancestors for HTML files (must be HTTP header, not meta tag)
         if (ext === ".html") {
-          headers["Content-Security-Policy"] =
-            "frame-ancestors 'self' tauri://localhost https://tauri.localhost";
+          headers["Content-Security-Policy"] = getFrameAncestorsCsp();
         }
 
         return c.body(content, 200, headers);
@@ -121,6 +127,13 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
   });
 
   return app;
+}
+
+export function getFrameAncestorsCsp(
+  env: Record<string, string | undefined> = process.env,
+): string {
+  const extra = env.YEP_FRAME_ANCESTORS?.split(/\s+/).filter(Boolean) ?? [];
+  return `frame-ancestors ${[...DEFAULT_FRAME_ANCESTORS, ...extra].join(" ")}`;
 }
 
 /**

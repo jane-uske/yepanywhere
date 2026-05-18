@@ -260,16 +260,19 @@ step("Generate package.json for npm", () => {
 
   // Create a new package.json for publishing
   const npmPackageJson: Record<string, unknown> = {
-    name: "@jane-uske/yepanywhere",
+    name: "@ali/aidc-page-agent",
     version: NPM_VERSION,
-    description: "A mobile-first supervisor for Claude Code agents",
+    description: "Internal Aidc page agent host CLI",
     type: "module",
     bin: {
-      yepanywhere: "./dist/cli.js",
+      "aidc-page-agent": "./dist/cli.js",
     },
     main: "./dist/index.js",
     exports: {
       ".": "./dist/index.js",
+    },
+    publishConfig: {
+      registry: "https://registry.anpm.alibaba-inc.com",
     },
     files: ["dist", "client-dist", "bundled", "README.md"],
     // Copy dependencies from source, excluding workspace deps
@@ -280,13 +283,20 @@ step("Generate package.json for npm", () => {
     ),
     repository: {
       type: "git",
-      url: "git+https://github.com/jane-uske/yepanywhere.git",
+      url: "git+http://gitlab.alibaba-inc.com/wb-wj935338/Aidc-PageAgent.git",
     },
-    homepage: "https://github.com/jane-uske/yepanywhere#readme",
+    homepage: "http://gitlab.alibaba-inc.com/wb-wj935338/Aidc-PageAgent#readme",
     bugs: {
-      url: "https://github.com/jane-uske/yepanywhere/issues",
+      url: "http://gitlab.alibaba-inc.com/wb-wj935338/Aidc-PageAgent/issues",
     },
-    keywords: ["claude", "ai", "agent", "supervisor", "mobile"],
+    keywords: [
+      "aidc",
+      "page-agent",
+      "browser-extension",
+      "claude",
+      "ai",
+      "agent",
+    ],
     license: "MIT",
     engines: {
       node: ">=20",
@@ -300,7 +310,7 @@ step("Generate package.json for npm", () => {
     `${JSON.stringify(npmPackageJson, null, 2)}\n`,
   );
 
-  log("  Package name: @jane-uske/yepanywhere");
+  log("  Package name: @ali/aidc-page-agent");
   log(`  Version: ${NPM_VERSION}`);
   log("  Written to: dist/npm-package/package.json");
   log("  (Original packages/server/package.json unchanged)");

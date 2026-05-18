@@ -108,6 +108,16 @@ export const MessageList = memo(function MessageList({
   const followUpScrollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [thinkingExpanded, setThinkingExpanded] = useState(false);
 
+  const getScrollContainer = useCallback((): HTMLElement | null => {
+    const isMobile = window.matchMedia("(max-width: 1099px)").matches;
+    if (isMobile) {
+      return (
+        (document.scrollingElement as HTMLElement) ?? document.documentElement
+      );
+    }
+    return containerRef.current?.parentElement ?? null;
+  }, []);
+
   // Scroll to bottom, marking it as programmatic so scroll handler ignores it
   const scrollToBottom = useCallback((container: HTMLElement) => {
     isProgrammaticScrollRef.current = true;
@@ -157,7 +167,7 @@ export const MessageList = memo(function MessageList({
   // Load older messages with scroll position preservation
   const handleLoadOlder = useCallback(() => {
     if (!onLoadOlderMessages) return;
-    const container = containerRef.current?.parentElement;
+    const container = getScrollContainer();
     if (!container) {
       onLoadOlderMessages();
       return;
@@ -179,51 +189,51 @@ export const MessageList = memo(function MessageList({
         });
       });
     });
-  }, [onLoadOlderMessages]);
+  }, [onLoadOlderMessages, getScrollContainer]);
 
   // Track scroll position to determine if user is near bottom.
   // Ignore programmatic scrolls - only user-initiated scrolls should affect auto-scroll state.
   const handleScroll = useCallback(() => {
     if (isProgrammaticScrollRef.current) return;
 
-    const container = containerRef.current?.parentElement;
+    const container = getScrollContainer();
     if (!container) return;
 
-    const threshold = 100; // pixels from bottom
+    const threshold = 100;
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight;
     shouldAutoScrollRef.current = distanceFromBottom < threshold;
-  }, []);
+  }, [getScrollContainer]);
 
-  // Attach scroll listener to parent container
+  // Attach scroll listener to scroll container
   useEffect(() => {
-    const container = containerRef.current?.parentElement;
-    if (!container) return;
+    const isMobile = window.matchMedia("(max-width: 1099px)").matches;
+    const target = isMobile ? window : containerRef.current?.parentElement;
+    if (!target) return;
 
-    container.addEventListener("scroll", handleScroll);
+    target.addEventListener("scroll", handleScroll);
 
     return () => {
-      container.removeEventListener("scroll", handleScroll);
+      target.removeEventListener("scroll", handleScroll);
     };
   }, [handleScroll]);
 
   // Use ResizeObserver to detect content height changes (handles async markdown rendering)
   useEffect(() => {
-    const container = containerRef.current?.parentElement;
-    if (!container) return;
+    const scrollContainer = getScrollContainer();
+    if (!scrollContainer) return;
 
-    const scrollContainer = container;
     lastHeightRef.current = scrollContainer.scrollHeight;
 
     const resizeObserver = new ResizeObserver(() => {
-      const newHeight = scrollContainer.scrollHeight;
+      const sc = getScrollContainer();
+      if (!sc) return;
+      const newHeight = sc.scrollHeight;
       const heightIncreased = newHeight > lastHeightRef.current;
 
-      // Auto-scroll when content height increases and auto-scroll is enabled
       if (heightIncreased && shouldAutoScrollRef.current) {
-        scrollToBottom(scrollContainer);
+        scrollToBottom(sc);
       } else {
-        // Update height tracking even when not scrolling
         lastHeightRef.current = newHeight;
       }
     });
@@ -240,29 +250,29 @@ export const MessageList = memo(function MessageList({
         clearTimeout(followUpScrollRef.current);
       }
     };
-  }, [scrollToBottom]);
+  }, [scrollToBottom, getScrollContainer]);
 
   // Force scroll to bottom when scrollTrigger changes (user sent a message)
   useEffect(() => {
     if (scrollTrigger > 0) {
       shouldAutoScrollRef.current = true;
-      const container = containerRef.current?.parentElement;
+      const container = getScrollContainer();
       if (container) {
         scrollToBottom(container);
       }
     }
-  }, [scrollTrigger, scrollToBottom]);
+  }, [scrollTrigger, scrollToBottom, getScrollContainer]);
 
   // Initial scroll to bottom on first render
   useEffect(() => {
     if (isInitialLoadRef.current && renderItems.length > 0) {
-      const container = containerRef.current?.parentElement;
+      const container = getScrollContainer();
       if (container) {
         scrollToBottom(container);
       }
       isInitialLoadRef.current = false;
     }
-  }, [renderItems.length, scrollToBottom]);
+  }, [renderItems.length, scrollToBottom, getScrollContainer]);
 
   return (
     <div className="message-list" ref={containerRef}>
