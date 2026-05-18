@@ -76,7 +76,7 @@ interface Props {
   slashCommands?: string[];
   /** Callback for custom client-side commands (e.g., "model"). Return true if handled. */
   onCustomCommand?: (command: string) => boolean;
-  /** External text injection from host integrations such as Kimi Page Agent. */
+  /** External text injection from host integrations such as Page Agent. */
   injectedText?: { id: string; text: string } | null;
   onInjectedTextApplied?: (id: string) => void;
 }

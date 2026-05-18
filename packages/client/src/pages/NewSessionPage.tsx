@@ -9,29 +9,30 @@ import { resolvePreferredProjectId } from "../hooks/useRecentProject";
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
 import {
-  type KimiPageAgentContext,
-  type KimiPageAgentInboundMessage,
-  buildKimiPageAgentPrompt,
-  getKimiContextSummary,
-  isKimiPageAgentMode,
-  isTrustedKimiPageAgentOrigin,
-  postKimiPageAgentMessage,
-} from "../lib/kimiPageAgentBridge";
+  type PageAgentContext,
+  type PageAgentInboundMessage,
+  buildPageAgentPrompt,
+  getPageAgentContextSummary,
+  isPageAgentMode,
+  isTrustedPageAgentOrigin,
+  postPageAgentMessage,
+} from "../lib/pageAgentBridge";
 import {
-  readKimiPageAgentContext,
-  writeKimiPageAgentContext,
-} from "../lib/kimiPageAgentContextStore";
+  readPageAgentContext,
+  writePageAgentContext,
+} from "../lib/pageAgentContextStore";
 import { generateUUID } from "../lib/uuid";
 
 export function NewSessionPage() {
   const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const projectId = searchParams.get("projectId");
-  const kimiMode = isKimiPageAgentMode();
-  const [kimiContext, setKimiContext] = useState<KimiPageAgentContext | null>(
-    () => readKimiPageAgentContext()?.context ?? null,
-  );
-  const [kimiInjectedText, setKimiInjectedText] = useState<{
+  const pageAgentMode = isPageAgentMode();
+  const [pageAgentContext, setPageAgentContext] =
+    useState<PageAgentContext | null>(
+      () => readPageAgentContext()?.context ?? null,
+    );
+  const [pageAgentInjectedText, setPageAgentInjectedText] = useState<{
     id: string;
     text: string;
     autoStart?: boolean;
@@ -62,75 +63,75 @@ export function NewSessionPage() {
   };
 
   useEffect(() => {
-    if (!kimiMode) return;
+    if (!pageAgentMode) return;
 
     const postReady = () => {
-      postKimiPageAgentMessage({
-        type: "YEP_KPA_READY",
+      postPageAgentMessage({
+        type: "YEP_PA_READY",
         capabilities: ["receivePageContext", "insertPrompt", "createSession"],
       });
     };
 
     postReady();
-    postKimiPageAgentMessage({ type: "YEP_KPA_REQUEST_CONTEXT" });
+    postPageAgentMessage({ type: "YEP_PA_REQUEST_CONTEXT" });
 
-    const onMessage = (event: MessageEvent<KimiPageAgentInboundMessage>) => {
+    const onMessage = (event: MessageEvent<PageAgentInboundMessage>) => {
       const data = event.data;
       if (
         !data ||
         typeof data !== "object" ||
         !("type" in data) ||
-        !String(data.type).startsWith("KPA_") ||
-        !isTrustedKimiPageAgentOrigin(event.origin)
+        !String(data.type).startsWith("PA_") ||
+        !isTrustedPageAgentOrigin(event.origin)
       ) {
         return;
       }
 
-      if (data.type === "KPA_PING") {
+      if (data.type === "PA_PING") {
         postReady();
         return;
       }
 
       const nextContext =
-        data.type === "KPA_CONTEXT"
+        data.type === "PA_CONTEXT"
           ? (data.payload ?? data.context ?? null)
           : (data.payload?.context ?? null);
       const nextInstruction =
-        data.type === "KPA_CONTEXT"
+        data.type === "PA_CONTEXT"
           ? data.instruction
           : data.payload?.instruction;
 
       if (!nextContext) return;
 
-      writeKimiPageAgentContext(nextContext);
-      setKimiContext(nextContext);
+      writePageAgentContext(nextContext);
+      setPageAgentContext(nextContext);
 
-      const summary = getKimiContextSummary(nextContext);
-      postKimiPageAgentMessage({
-        type: "YEP_KPA_CONTEXT_RECEIVED",
+      const summary = getPageAgentContextSummary(nextContext);
+      postPageAgentMessage({
+        type: "YEP_PA_CONTEXT_RECEIVED",
         app: summary.appLabel,
         hasSelection: Boolean(nextContext.selection),
         contextSeq: nextContext.kpa?.contextSeq,
         selectionId: nextContext.kpa?.selectionId,
       });
 
-      const prompt = buildKimiPageAgentPrompt(nextContext, nextInstruction);
-      if (data.type === "KPA_INSERT_PROMPT" || data.autoInsert) {
-        setKimiInjectedText({ id: generateUUID(), text: prompt });
+      const prompt = buildPageAgentPrompt(nextContext, nextInstruction);
+      if (data.type === "PA_INSERT_PROMPT" || data.autoInsert) {
+        setPageAgentInjectedText({ id: generateUUID(), text: prompt });
       }
-      if (data.type === "KPA_CONTEXT" && data.autoSend) {
-        setKimiInjectedText({
+      if (data.type === "PA_CONTEXT" && data.autoSend) {
+        setPageAgentInjectedText({
           id: generateUUID(),
           text: prompt,
           autoStart: true,
         });
-        postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+        postPageAgentMessage({ type: "YEP_PA_PROMPT_SENT" });
       }
     };
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [kimiMode]);
+  }, [pageAgentMode]);
 
   const loading = projectLoading || projectsLoading;
 
@@ -210,21 +211,21 @@ export function NewSessionPage() {
             {effectiveProjectId && (
               <NewSessionForm
                 projectId={effectiveProjectId}
-                injectedText={kimiInjectedText}
+                injectedText={pageAgentInjectedText}
                 transformMessage={
-                  kimiMode && kimiContext
+                  pageAgentMode && pageAgentContext
                     ? (message) =>
-                        buildKimiPageAgentPrompt(kimiContext, message)
+                        buildPageAgentPrompt(pageAgentContext, message)
                     : undefined
                 }
                 onInjectedTextApplied={(id) => {
-                  setKimiInjectedText((current) =>
+                  setPageAgentInjectedText((current) =>
                     current?.id === id ? null : current,
                   );
                 }}
                 onSessionStarted={() => {
-                  if (kimiMode) {
-                    postKimiPageAgentMessage({ type: "YEP_KPA_PROMPT_SENT" });
+                  if (pageAgentMode) {
+                    postPageAgentMessage({ type: "YEP_PA_PROMPT_SENT" });
                   }
                 }}
               />

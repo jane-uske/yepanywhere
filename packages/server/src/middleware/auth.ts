@@ -73,7 +73,7 @@ export function createAuthMiddleware(
 
     // Public, non-secret integration diagnostics for browser extensions.
     // The route still passes host/CORS checks before reaching this middleware.
-    if (path === "/api/kimi-page-agent/preflight") {
+    if (path === "/api/page-agent/preflight") {
       await next();
       return;
     }

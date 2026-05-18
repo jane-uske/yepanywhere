@@ -91,7 +91,7 @@ export interface NewSessionFormProps {
   placeholder?: string;
   /** Compact mode: no header, no mode selector (default: false) */
   compact?: boolean;
-  /** External text injection from host integrations such as Kimi Page Agent. */
+  /** External text injection from host integrations such as Page Agent. */
   injectedText?: { id: string; text: string; autoStart?: boolean } | null;
   onInjectedTextApplied?: (id: string) => void;
   /** Transform the typed message before creating the session. */
