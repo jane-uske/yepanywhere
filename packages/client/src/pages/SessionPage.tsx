@@ -239,7 +239,8 @@ function SessionPageContent({
         const footer = inputFooterRef.current;
         if (footer) {
           const atBottom =
-            window.innerHeight + y >= document.documentElement.scrollHeight - 50;
+            window.innerHeight + y >=
+            document.documentElement.scrollHeight - 50;
           if (atBottom) {
             footer.classList.remove("input-hidden");
           } else if (delta > 8) {

@@ -508,7 +508,7 @@
   }
 
   .session-page .session-header::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background: color-mix(in srgb, var(--bg-surface) 55%, transparent);
