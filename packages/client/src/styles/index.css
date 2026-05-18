@@ -993,6 +993,25 @@ h2 {
   padding: 0.75rem 1rem;
 }
 
+.sidebar-header-brandless {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  right: 1rem;
+  z-index: 2;
+  justify-content: flex-end;
+  padding: 0;
+}
+
+.sidebar-header-brandless-desktop {
+  justify-content: flex-end;
+  padding-bottom: 0.25rem;
+}
+
+.sidebar:has(.sidebar-header-brandless) .sidebar-actions {
+  padding-top: 8px;
+  padding-right: 3.25rem;
+}
+
 .sidebar-brand {
   font-weight: 600;
   font-size: 1.1rem;
@@ -1615,6 +1634,44 @@ a.sidebar-nav-item {
   padding: 0.75rem 1rem;
   background: var(--bg-surface);
 }
+.session-page.kimi-page-agent-embed {
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.session-page.kimi-page-agent-embed .main-content-mobile,
+.session-page.kimi-page-agent-embed .main-content-mobile-inner {
+  height: 100%;
+  min-height: 0;
+}
+
+.session-page.kimi-page-agent-embed .session-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+}
+
+.session-page.kimi-page-agent-embed .session-input {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.75rem 0.75rem;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.session-page.kimi-page-agent-embed .session-input-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.session-page.kimi-page-agent-embed .kimi-page-agent-panel {
+  margin-bottom: 0;
+  padding: 0.625rem;
+}
 
 /* Mobile content wrappers - ensure flex layout propagates */
 .main-content-mobile {
@@ -1658,28 +1715,100 @@ a.sidebar-nav-item {
   }
 }
 
-/* Mobile fixed header/footer - prevents issues with dynamic viewport height */
+/* Mobile layout — body-level scroll so Safari can collapse its toolbar */
 @media (max-width: 1099px) {
   .session-page {
-    /* Use fixed height instead of dvh to avoid layout shifts */
-    height: 100%;
-    position: fixed;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .session-page .session-header {
+    position: sticky;
     top: 0;
-    left: 0;
-    right: 0;
+    z-index: 100;
+  }
+
+  .session-page .session-messages {
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .session-page .session-input {
+    position: sticky;
     bottom: 0;
+    z-index: 100;
+    padding: 0;
+    background: transparent;
+    transition: transform 0.3s ease;
   }
 
-  html.is-edge-to-edge .session-page {
-    /* Edge-to-edge shells draw behind status/nav bars, so content must stay inside
-       the safe area. Regular Safari keeps browser chrome outside the page. */
+  .session-page .session-input.input-hidden {
+    transform: translateY(100%);
+  }
+
+  .session-page .session-input .session-connection-bar {
+    display: none;
+  }
+
+  .session-page .session-input-inner {
+    padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-surface);
+  }
+
+  html.is-edge-to-edge .session-page .session-header {
     padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  .main-content-mobile,
+  .session-page.kimi-page-agent-embed {
+    position: relative;
+    inset: auto;
+    height: 100vh;
+    height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .session-page.kimi-page-agent-embed .session-header {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+  }
+
+  .session-page.kimi-page-agent-embed .session-messages {
+    overflow-y: auto;
+    min-height: 0;
+    flex: 1;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+
+  .session-page.kimi-page-agent-embed .session-input {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface);
+    transition: none;
+  }
+
+  .session-page.kimi-page-agent-embed .session-input .session-connection-bar {
+    display: block;
+  }
+
+  .session-page.kimi-page-agent-embed .session-input-inner {
+    padding: 0;
+    background: transparent;
+  }
+
+  .main-content-mobile {
+    height: auto;
+  }
+
   .main-content-mobile-inner {
-    height: 100%;
+    height: auto;
   }
 }
 
@@ -1852,6 +1981,96 @@ a.sidebar-nav-item {
 .message-input-wrapper {
   position: relative;
   --mobile-composer-textarea-height: 2.5rem;
+}
+
+.kimi-page-agent-panel {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.625rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  background: var(--bg-secondary);
+}
+
+.kimi-page-agent-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.kimi-page-agent-title {
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.kimi-page-agent-subtitle {
+  margin-top: 0.125rem;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.kimi-page-agent-status {
+  flex: 0 0 auto;
+  padding: 0.125rem 0.45rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.kimi-page-agent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.kimi-page-agent-meta span {
+  max-width: 100%;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.375rem;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.kimi-page-agent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.kimi-page-agent-actions button {
+  height: 1.8rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.45rem;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.kimi-page-agent-actions button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.kimi-page-agent-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.kimi-page-agent-actions button.primary {
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  background: var(--accent);
 }
 
 .message-input-toggle {
