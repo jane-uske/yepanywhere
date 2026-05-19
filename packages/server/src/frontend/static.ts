@@ -112,10 +112,7 @@ export function createStaticRoutes(options: StaticServeOptions): Hono {
     try {
       const indexHtml = await fs.promises.readFile(indexPath, "utf-8");
       return c.html(indexHtml, 200, {
-        // frame-ancestors must be set via HTTP header (not meta tag)
-        "Content-Security-Policy":
-          "frame-ancestors 'self' tauri://localhost https://tauri.localhost",
-        // Don't cache index.html (hashed asset paths change on rebuild)
+        "Content-Security-Policy": getFrameAncestorsCsp(),
         "Cache-Control": "no-cache",
       });
     } catch {

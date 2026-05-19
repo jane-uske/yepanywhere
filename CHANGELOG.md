@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.34]
+
+### Fixed
+- SPA fallback route now uses `getFrameAncestorsCsp()` instead of hardcoded CSP, so `YEP_FRAME_ANCESTORS` env var correctly applies to all pages (not just static HTML files).
+
 ## [0.4.33]
 
 ### Fixed
