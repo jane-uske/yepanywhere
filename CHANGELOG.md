@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.4.33]
+
+### Fixed
+- `isTrustedPageAgentOrigin()` now persists `hostOrigin` to sessionStorage, mirroring the `isPageAgentMode()` pattern. This fixes postMessage rejection when React Router navigation strips the URL query params from the iframe.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
