@@ -137,6 +137,7 @@ export type PageAgentOutboundMessage =
     };
 
 const PAGE_AGENT_MODE_STORAGE_KEY = "page-agent.mode";
+const PAGE_AGENT_HOST_ORIGIN_KEY = "page-agent.hostOrigin";
 
 export function isPageAgentMode(): boolean {
   if (typeof window === "undefined") return false;
@@ -168,7 +169,21 @@ export function isTrustedPageAgentOrigin(origin: string): boolean {
 
   const params = new URLSearchParams(window.location.search);
   const allowedOrigin = params.get("hostOrigin");
-  if (allowedOrigin && origin === allowedOrigin) return true;
+  if (allowedOrigin) {
+    try {
+      window.sessionStorage.setItem(PAGE_AGENT_HOST_ORIGIN_KEY, allowedOrigin);
+    } catch {
+      // Ignore storage failures
+    }
+    if (origin === allowedOrigin) return true;
+  }
+
+  try {
+    const stored = window.sessionStorage.getItem(PAGE_AGENT_HOST_ORIGIN_KEY);
+    if (stored && origin === stored) return true;
+  } catch {
+    // Ignore storage failures
+  }
 
   return false;
 }
