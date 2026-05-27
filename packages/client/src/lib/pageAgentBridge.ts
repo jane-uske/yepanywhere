@@ -230,6 +230,11 @@ export function buildPageAgentPrompt(
   const codeGroupConstraint = productTarget.codeGroup
     ? `- 页面产品分类为 ${productTarget.label}，代码平台搜索范围使用 ${productTarget.codeGroup}。`
     : "- Page context product not yet classified; infer from domain, title, and resource path.";
+  const cdnHints = context.selection?.cdnHints;
+  const cdnHintConstraint =
+    cdnHints && cdnHints.length > 0
+      ? `- 选中元素关联的 CDN 仓库线索（按可信度排序）：${cdnHints.map((h) => `${h.repoPath}@${h.version}（来源：${h.source}${h.appName ? `，micro-app name: ${h.appName}` : ""}）`).join("；")}。优先用这些 repoPath 在代码平台直接搜索仓库，不需要再猜。`
+      : null;
   const xspaceRouteConstraint =
     xspaceRouteHint?.repoHint && productTarget.codeGroup
       ? `- Xspace 页面路由线索为 ${xspaceRouteHint.routePath ?? "-"}；如果是 page 路由，优先用最后一段 ${xspaceRouteHint.repoHint} 在当前 workspace 和 ${productTarget.codeGroup} 代码组做模糊检索。`
@@ -240,6 +245,7 @@ export function buildPageAgentPrompt(
     "",
     "执行约束：",
     codeGroupConstraint,
+    ...(cdnHintConstraint ? [cdnHintConstraint] : []),
     ...(xspaceRouteConstraint ? [xspaceRouteConstraint] : []),
     "- 定位仓库时先检查当前 workspace 内是否已有对应仓库；没有时，再通过 code 平台 MCP 在产品对应代码组搜索并下载/拉取。",
     "- 不要在 workspace 之外盲目扫本地目录；如果 workspace 与 code 平台结果冲突，说明选择依据。",
@@ -258,18 +264,20 @@ export function buildPageAgentPrompt(
 
 function resolveProductTarget(context: PageAgentContext) {
   const declaredKey = context.page?.product?.key?.toLowerCase();
+  const declaredCodeGroup = context.page?.product?.codeGroup;
+
   if (declaredKey === "xspace") {
     return {
       key: "xspace",
       label: "Xspace",
-      codeGroup: "https://github.com/example/xspace",
+      codeGroup: declaredCodeGroup || "https://code.alibaba-inc.com/aidc-xspace",
     };
   }
-  if (declaredKey === "alime") {
+  if (declaredKey === "alime" || declaredKey === "alimebot") {
     return {
-      key: "alime",
-      label: "Alime",
-      codeGroup: "https://github.com/example/mefe",
+      key: "alimebot",
+      label: "AlimeBot",
+      codeGroup: declaredCodeGroup || "https://code.alibaba-inc.com/aidc-mefe",
     };
   }
 
@@ -296,14 +304,14 @@ function resolveProductTarget(context: PageAgentContext) {
     return {
       key: "xspace",
       label: "Xspace",
-      codeGroup: "https://github.com/example/xspace",
+      codeGroup: "https://code.alibaba-inc.com/aidc-xspace",
     };
   }
   if (currentPage || /(^|[./_-])alime([./_-]|$)|mefe/.test(signal)) {
     return {
-      key: "alime",
-      label: "Alime",
-      codeGroup: "https://github.com/example/mefe",
+      key: "alimebot",
+      label: "AlimeBot",
+      codeGroup: "https://code.alibaba-inc.com/aidc-mefe",
     };
   }
 
@@ -456,6 +464,7 @@ function getPromptContext(
     }),
     selection: selection
       ? pickDefined({
+          cdnHints: (selection as any).cdnHints?.length ? (selection as any).cdnHints : undefined,
           element: element
             ? pickDefined({
                 tag: element.tag,
