@@ -260,7 +260,7 @@ step("Generate package.json for npm", () => {
 
   // Create a new package.json for publishing
   const npmPackageJson: Record<string, unknown> = {
-    name: "@jane-uske/yepanywhere",
+    name: process.env.NPM_PACKAGE_NAME || "@jane-uske/yepanywhere",
     version: NPM_VERSION,
     description: "A mobile-first supervisor for Claude Code agents",
     type: "module",
@@ -290,6 +290,9 @@ step("Generate package.json for npm", () => {
     license: "MIT",
     engines: {
       node: ">=20",
+    },
+    publishConfig: {
+      registry: "https://registry.anpm.alibaba-inc.com",
     },
   };
 
