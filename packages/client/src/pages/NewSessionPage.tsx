@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { NewSessionForm } from "../components/NewSessionForm";
 import { PageHeader } from "../components/PageHeader";
@@ -37,6 +37,7 @@ export function NewSessionPage() {
     text: string;
     autoStart?: boolean;
   } | null>(null);
+  const pageAgentPromptRef = useRef<string | null>(null);
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
 
@@ -92,6 +93,13 @@ export function NewSessionPage() {
         return;
       }
 
+      if (data.type === "PA_SELECTION_UPDATE") {
+        setPageAgentContext((prev) =>
+          prev ? { ...prev, selection: data.selection } : prev,
+        );
+        return;
+      }
+
       const nextContext =
         data.type === "PA_CONTEXT"
           ? (data.payload ?? data.context ?? null)
@@ -115,7 +123,11 @@ export function NewSessionPage() {
         selectionId: nextContext.kpa?.selectionId,
       });
 
-      const prompt = buildPageAgentPrompt(nextContext, nextInstruction);
+      const prompt = (data.type === "PA_CONTEXT" && data.prompt)
+        ? data.prompt
+        : buildPageAgentPrompt(nextContext, nextInstruction);
+      // Store externally-built prompt for transformMessage to use
+      pageAgentPromptRef.current = (data.type === "PA_CONTEXT" && data.prompt) ? data.prompt : null;
       if (data.type === "PA_INSERT_PROMPT" || data.autoInsert) {
         setPageAgentInjectedText({ id: generateUUID(), text: prompt });
       }
@@ -215,7 +227,9 @@ export function NewSessionPage() {
                 transformMessage={
                   pageAgentMode && pageAgentContext
                     ? (message) =>
-                        buildPageAgentPrompt(pageAgentContext, message)
+                        pageAgentPromptRef.current
+                          ? `${message}\n\n${pageAgentPromptRef.current}`
+                          : buildPageAgentPrompt(pageAgentContext, message)
                     : undefined
                 }
                 onInjectedTextApplied={(id) => {

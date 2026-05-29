@@ -81,6 +81,18 @@ export interface PageAgentContext {
     };
   } | null;
   screenshot?: string | { error?: string };
+  devGuide?: {
+    prompt?: string;
+    repoPath?: string;
+    repoUrl?: string;
+    codeGroup?: string | null;
+    cdnHints?: Array<{
+      cdnGroup?: string;
+      name?: string;
+      version?: string;
+      repoPath?: string;
+    }>;
+  } | null;
   [key: string]: unknown;
 }
 
@@ -100,6 +112,7 @@ export type PageAgentInboundMessage =
       payload?: PageAgentContext;
       context?: PageAgentContext;
       instruction?: string;
+      prompt?: string;
       autoInsert?: boolean;
       autoSend?: boolean;
     }
@@ -109,6 +122,10 @@ export type PageAgentInboundMessage =
         instruction?: string;
         context?: PageAgentContext;
       };
+    }
+  | {
+      type: "PA_SELECTION_UPDATE";
+      selection: PageAgentContext["selection"];
     }
   | {
       type: "PA_PING";
@@ -230,7 +247,7 @@ export function buildPageAgentPrompt(
   const codeGroupConstraint = productTarget.codeGroup
     ? `- 页面产品分类为 ${productTarget.label}，代码平台搜索范围使用 ${productTarget.codeGroup}。`
     : "- Page context product not yet classified; infer from domain, title, and resource path.";
-  const cdnHints = context.selection?.cdnHints;
+  const cdnHints = (context.selection as any)?.cdnHints as Array<{ repoPath: string; version: string; source: string; appName?: string }> | undefined;
   const cdnHintConstraint =
     cdnHints && cdnHints.length > 0
       ? `- 选中元素关联的 CDN 仓库线索（按可信度排序）：${cdnHints.map((h) => `${h.repoPath}@${h.version}（来源：${h.source}${h.appName ? `，micro-app name: ${h.appName}` : ""}）`).join("；")}。优先用这些 repoPath 在代码平台直接搜索仓库，不需要再猜。`
@@ -239,6 +256,9 @@ export function buildPageAgentPrompt(
     xspaceRouteHint?.repoHint && productTarget.codeGroup
       ? `- Xspace 页面路由线索为 ${xspaceRouteHint.routePath ?? "-"}；如果是 page 路由，优先用最后一段 ${xspaceRouteHint.repoHint} 在当前 workspace 和 ${productTarget.codeGroup} 代码组做模糊检索。`
       : null;
+  const devGuideConstraint = context.devGuide?.prompt
+    ? `- 本地调试指引：\n${context.devGuide.prompt}`
+    : null;
 
   return [
     task,
@@ -247,6 +267,7 @@ export function buildPageAgentPrompt(
     codeGroupConstraint,
     ...(cdnHintConstraint ? [cdnHintConstraint] : []),
     ...(xspaceRouteConstraint ? [xspaceRouteConstraint] : []),
+    ...(devGuideConstraint ? [devGuideConstraint] : []),
     "- 定位仓库时先检查当前 workspace 内是否已有对应仓库；没有时，再通过 code 平台 MCP 在产品对应代码组搜索并下载/拉取。",
     "- 不要在 workspace 之外盲目扫本地目录；如果 workspace 与 code 平台结果冲突，说明选择依据。",
     "- 定位仓库后按需要通过 o2 MCP 建迭代、推进改动、提交和部署。",
@@ -487,6 +508,14 @@ function getPromptContext(
           ownerContainer: selection.context?.ownerContainer,
         })
       : null,
+    devGuide: context.devGuide
+      ? pickDefined({
+          repoPath: context.devGuide.repoPath,
+          repoUrl: context.devGuide.repoUrl,
+          codeGroup: context.devGuide.codeGroup,
+          cdnHints: context.devGuide.cdnHints,
+        })
+      : undefined,
   };
 }
 

@@ -421,7 +421,9 @@ function SessionPageContent({
   });
 
   const handleSend = async (text: string) => {
-    const outgoingText = text;
+    const outgoingText = pageAgentMode && pageAgentContext?.selection
+      ? `${text}\n\n当前选中元素：\n\`\`\`json\n${JSON.stringify(pageAgentContext.selection, null, 2)}\n\`\`\``
+      : text;
     // Add to pending queue and get tempId to pass to server
     const tempId = addPendingMessage(outgoingText);
     setProcessState("in-turn"); // Optimistic: show processing indicator immediately
@@ -588,6 +590,13 @@ function SessionPageContent({
         return;
       }
 
+      if (data.type === "PA_SELECTION_UPDATE") {
+        setPageAgentContext((prev) =>
+          prev ? { ...prev, selection: data.selection } : prev,
+        );
+        return;
+      }
+
       const nextContext =
         data.type === "PA_CONTEXT"
           ? (data.payload ?? data.context ?? null)
@@ -609,7 +618,9 @@ function SessionPageContent({
         hasSelection: Boolean(nextContext.selection),
       });
 
-      const prompt = buildPageAgentPrompt(nextContext, nextInstruction);
+      const prompt = (data.type === "PA_CONTEXT" && data.prompt)
+        ? data.prompt
+        : buildPageAgentPrompt(nextContext, nextInstruction);
       if (data.type === "PA_INSERT_PROMPT" || data.autoInsert) {
         setPageAgentInjectedText({ id: generateUUID(), text: prompt });
       }
@@ -624,7 +635,9 @@ function SessionPageContent({
   }, [pageAgentMode]);
 
   const handleQueue = async (text: string) => {
-    const outgoingText = text;
+    const outgoingText = pageAgentMode && pageAgentContext?.selection
+      ? `${text}\n\n当前选中元素：\n\`\`\`json\n${JSON.stringify(pageAgentContext.selection, null, 2)}\n\`\`\``
+      : text;
     const tempId = addPendingMessage(outgoingText);
     setScrollTrigger((prev) => prev + 1);
 
