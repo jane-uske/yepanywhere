@@ -8,28 +8,48 @@
 /** Pattern for all IDE metadata tags */
 const IDE_TAG_PATTERN = /<ide_(opened_file|selection)>[\s\S]*?<\/ide_\1>/g;
 
+/** Pattern for Claude Code injected system/harness tags */
+const CLAUDE_CODE_TAG_PATTERN =
+  /<(local-command-caveat|local-command-name|local-command-stdout|system-reminder|command-name|command-message|command-args)>[\s\S]*?<\/\1>/g;
+
+/** Claude Code tag prefixes used for fast prefix-check */
+const CLAUDE_CODE_TAG_PREFIXES = [
+  "<local-command-caveat>",
+  "<local-command-name>",
+  "<local-command-stdout>",
+  "<system-reminder>",
+  "<command-name>",
+  "<command-message>",
+  "<command-args>",
+];
+
 /** Pattern specifically for ide_opened_file tags */
 const OPENED_FILE_TAG_PATTERN =
   /<ide_opened_file>([\s\S]*?)<\/ide_opened_file>/g;
 
 /**
- * Check if text block is purely IDE metadata (for skipping in title extraction).
- * Returns true if the trimmed text starts with an IDE metadata tag.
+ * Check if text block is purely IDE/harness metadata (for skipping in title extraction).
+ * Returns true if the trimmed text starts with an IDE metadata tag or a Claude Code
+ * system tag (e.g. `<local-command-caveat>`, `<system-reminder>`).
  */
 export function isIdeMetadata(text: string): boolean {
   const trimmed = text.trim();
   return (
     trimmed.startsWith("<ide_opened_file>") ||
-    trimmed.startsWith("<ide_selection>")
+    trimmed.startsWith("<ide_selection>") ||
+    CLAUDE_CODE_TAG_PREFIXES.some((p) => trimmed.startsWith(p))
   );
 }
 
 /**
- * Strip all IDE metadata tags from text.
- * Returns the text with all <ide_opened_file> and <ide_selection> tags removed.
+ * Strip all IDE metadata and Claude Code harness tags from text.
+ * Returns the text with all matching tags removed.
  */
 export function stripIdeMetadata(text: string): string {
-  return text.replace(IDE_TAG_PATTERN, "").trim();
+  return text
+    .replace(IDE_TAG_PATTERN, "")
+    .replace(CLAUDE_CODE_TAG_PATTERN, "")
+    .trim();
 }
 
 /**

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.35-aidc.0]
+
+### Fixed
+- Session titles now display the generated name instead of raw system tags (`<local-command-caveat>`, `<system-reminder>`, etc.)
+- Strip harness/system XML tags from user messages when extracting session titles
+- Use system-installed executable for model probing to get up-to-date model versions
+
+### Added
+- GLM-5.2 and DeepSeek V4 Pro model options with gateway passthrough
+
 ## [0.4.34]
 
 ### Fixed

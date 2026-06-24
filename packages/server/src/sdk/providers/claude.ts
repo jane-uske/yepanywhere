@@ -1,6 +1,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   type SDKMessage as AgentSDKMessage,
   type Query,
@@ -42,6 +44,32 @@ import type {
  * old time-only heuristic if the wrapper causes issues.
  */
 const USE_SPAWN_WRAPPER = true;
+
+/**
+ * Resolve the user's standalone Claude Code binary (a sibling global npm
+ * package, `@anthropic-ai/claude-code/bin/claude.exe`) so the probed model
+ * list AND sessions track the installed CLI version — not the older Claude
+ * Code bundled inside @anthropic-ai/claude-agent-sdk.
+ *
+ * Resolved relative to this file so it survives node-version path changes.
+ * Falls back to undefined → SDK uses its own bundled CLI.
+ */
+const SYSTEM_CLAUDE_EXECUTABLE: string | undefined = (() => {
+  for (const bin of ["claude.exe", "claude"]) {
+    try {
+      const candidate = fileURLToPath(
+        new URL(
+          `../../../../../../@anthropic-ai/claude-code/bin/${bin}`,
+          import.meta.url,
+        ),
+      );
+      if (existsSync(candidate)) return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+  return undefined;
+})();
 
 /** Static fallback list of Claude models (used if probe fails) */
 const CLAUDE_MODELS_FALLBACK: ModelInfo[] = [
@@ -106,6 +134,12 @@ function enrichClaudeModel(model: ModelInfo): ModelInfo {
 /**
  * Map versioned model IDs (e.g. "claude-opus-4-6") back to CLI aliases
  * ("opus") so they are accepted by `claude --model`.
+ *
+ * Non-Claude model IDs (e.g. "GLM-5.2", "deepseek-v4-pro" routed through a
+ * custom ANTHROPIC_BASE_URL gateway) are passed through unchanged. The Claude
+ * CLI accepts arbitrary --model values and forwards them to the gateway, so we
+ * must not collapse them to undefined (which falls back to the CLI default,
+ * typically an over-quota model).
  */
 function normalizeClaudeModelId(
   modelId: string | undefined,
@@ -117,7 +151,7 @@ function normalizeClaudeModelId(
   if (lower.includes("opus")) return "opus";
   if (lower.includes("sonnet")) return "sonnet";
   if (lower.includes("haiku")) return "haiku";
-  return undefined; // fall back to CLI default
+  return modelId; // passthrough for gateway-routed models (e.g. GLM-5.2)
 }
 
 function mergeClaudeModels(models: ModelInfo[]): ModelInfo[] {
@@ -292,6 +326,7 @@ export class ClaudeProvider implements AgentProvider {
           abortController,
           permissionMode: "default",
           persistSession: false,
+          pathToClaudeCodeExecutable: SYSTEM_CLAUDE_EXECUTABLE,
           env: this.getEnv(),
         },
       });
@@ -494,6 +529,9 @@ export class ClaudeProvider implements AgentProvider {
           effort: options.effort,
           // Filter env to exclude npm_*, yep-anywhere specific, and other irrelevant vars
           env: this.getEnv(),
+          // Use the user's standalone Claude Code when present (else SDK's bundled CLI).
+          // Ignored for remote SSH runs, where spawnClaudeCodeProcess overrides spawning.
+          pathToClaudeCodeExecutable: SYSTEM_CLAUDE_EXECUTABLE,
           // Remote execution via SSH
           spawnClaudeCodeProcess,
         },

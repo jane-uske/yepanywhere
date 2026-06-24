@@ -146,7 +146,9 @@ export type ModelOption =
   | "opus"
   | "opus[1m]"
   | "haiku"
-  | "opusplan";
+  | "opusplan"
+  | "GLM-5.2"
+  | "deepseek-v4-pro";
 
 /**
  * The logical default selection token.

@@ -41,6 +41,8 @@ export const MODEL_OPTIONS: { value: ModelOption; label: string }[] = [
   { value: "opus[1m]", label: "Opus 1M" },
   { value: "haiku", label: "Haiku" },
   { value: "opusplan", label: "Opus Plan" },
+  { value: "GLM-5.2", label: "GLM-5.2" },
+  { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
 ];
 
 export const EFFORT_LEVEL_OPTIONS: {

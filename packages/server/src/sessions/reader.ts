@@ -274,8 +274,13 @@ export class ClaudeSessionReader implements ISessionReader {
       }
 
       const stats = await stat(filePath);
+      // Prefer Claude Code's generated session title (ai-title entry), then the
+      // first real user message (system tags stripped), then the last user prompt.
+      const aiTitle = this.findAiTitle(messages);
       const firstUserMessage = this.findFirstUserMessage(messages);
-      const fullTitle = firstUserMessage?.trim() || null;
+      const lastPrompt = this.findLastPrompt(messages);
+      const titleSource = aiTitle || firstUserMessage || lastPrompt;
+      const fullTitle = titleSource?.trim() || null;
       const model = this.extractModel(conversationMessages);
 
       // claude-ollama sessions use the same JSONL format but have non-Claude
@@ -292,7 +297,7 @@ export class ClaudeSessionReader implements ISessionReader {
       return {
         id: sessionId,
         projectId,
-        title: this.extractTitle(firstUserMessage),
+        title: this.extractTitle(titleSource),
         fullTitle,
         createdAt: stats.birthtime.toISOString(),
         updatedAt: stats.mtime.toISOString(),
@@ -586,18 +591,63 @@ export class ClaudeSessionReader implements ISessionReader {
         const content = msg.message.content;
         if (content) {
           // Content can be string or array of content blocks
-          if (typeof content === "string") {
-            return this.extractTitleContent(content);
+          const extracted =
+            typeof content === "string"
+              ? this.extractTitleContent(content)
+              : this.extractTitleContent(
+                  content.filter((b) => typeof b !== "string") as Array<{
+                    type: string;
+                    text?: string;
+                  }>,
+                );
+          // Skip messages that are purely system tags / slash commands (extracted
+          // is empty after stripping) — keep scanning for the first real user prompt.
+          if (extracted?.trim()) {
+            return extracted;
           }
-          // Filter to object blocks only (skip string items), cast for compatibility
-          const objectBlocks = content.filter(
-            (b) => typeof b !== "string",
-          ) as Array<{ type: string; text?: string }>;
-          return this.extractTitleContent(objectBlocks);
         }
       }
     }
     return null;
+  }
+
+  /**
+   * Find Claude Code's generated session title. Claude Code writes `ai-title`
+   * entries ({ type: "ai-title", aiTitle: string }) as the conversation grows;
+   * the last one is the most up-to-date title shown in `claude --resume`.
+   */
+  private findAiTitle(messages: ClaudeSessionEntry[]): string | null {
+    let title: string | null = null;
+    for (const msg of messages) {
+      if (
+        msg &&
+        (msg as Record<string, unknown>).type === "ai-title" &&
+        typeof (msg as Record<string, unknown>).aiTitle === "string" &&
+        ((msg as Record<string, unknown>).aiTitle as string).trim()
+      ) {
+        title = ((msg as Record<string, unknown>).aiTitle as string).trim();
+      }
+    }
+    return title;
+  }
+
+  /**
+   * Find the most recent user prompt recorded in `last-prompt` entries.
+   * Used as a clean fallback when there's no ai-title yet.
+   */
+  private findLastPrompt(messages: ClaudeSessionEntry[]): string | null {
+    let prompt: string | null = null;
+    for (const msg of messages) {
+      if (
+        msg &&
+        (msg as Record<string, unknown>).type === "last-prompt" &&
+        typeof (msg as Record<string, unknown>).lastPrompt === "string" &&
+        ((msg as Record<string, unknown>).lastPrompt as string).trim()
+      ) {
+        prompt = ((msg as Record<string, unknown>).lastPrompt as string).trim();
+      }
+    }
+    return prompt ? stripIdeMetadata(prompt).trim() || null : null;
   }
 
   /**
