@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.4.35-aidc.0]
+## [0.4.35]
 
 ### Fixed
 - Session titles now display the generated name instead of raw system tags (`<local-command-caveat>`, `<system-reminder>`, etc.)

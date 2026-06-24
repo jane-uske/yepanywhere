@@ -247,7 +247,14 @@ export function buildPageAgentPrompt(
   const codeGroupConstraint = productTarget.codeGroup
     ? `- 页面产品分类为 ${productTarget.label}，代码平台搜索范围使用 ${productTarget.codeGroup}。`
     : "- Page context product not yet classified; infer from domain, title, and resource path.";
-  const cdnHints = (context.selection as any)?.cdnHints as Array<{ repoPath: string; version: string; source: string; appName?: string }> | undefined;
+  const cdnHints = (context.selection as any)?.cdnHints as
+    | Array<{
+        repoPath: string;
+        version: string;
+        source: string;
+        appName?: string;
+      }>
+    | undefined;
   const cdnHintConstraint =
     cdnHints && cdnHints.length > 0
       ? `- 选中元素关联的 CDN 仓库线索（按可信度排序）：${cdnHints.map((h) => `${h.repoPath}@${h.version}（来源：${h.source}${h.appName ? `，micro-app name: ${h.appName}` : ""}）`).join("；")}。优先用这些 repoPath 在代码平台直接搜索仓库，不需要再猜。`
@@ -291,7 +298,8 @@ function resolveProductTarget(context: PageAgentContext) {
     return {
       key: "xspace",
       label: "Xspace",
-      codeGroup: declaredCodeGroup || "https://code.alibaba-inc.com/aidc-xspace",
+      codeGroup:
+        declaredCodeGroup || "https://code.alibaba-inc.com/aidc-xspace",
     };
   }
   if (declaredKey === "alime" || declaredKey === "alimebot") {
@@ -485,7 +493,9 @@ function getPromptContext(
     }),
     selection: selection
       ? pickDefined({
-          cdnHints: (selection as any).cdnHints?.length ? (selection as any).cdnHints : undefined,
+          cdnHints: (selection as any).cdnHints?.length
+            ? (selection as any).cdnHints
+            : undefined,
           element: element
             ? pickDefined({
                 tag: element.tag,

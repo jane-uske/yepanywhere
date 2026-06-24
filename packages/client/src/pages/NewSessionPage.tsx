@@ -123,11 +123,13 @@ export function NewSessionPage() {
         selectionId: nextContext.kpa?.selectionId,
       });
 
-      const prompt = (data.type === "PA_CONTEXT" && data.prompt)
-        ? data.prompt
-        : buildPageAgentPrompt(nextContext, nextInstruction);
+      const prompt =
+        data.type === "PA_CONTEXT" && data.prompt
+          ? data.prompt
+          : buildPageAgentPrompt(nextContext, nextInstruction);
       // Store externally-built prompt for transformMessage to use
-      pageAgentPromptRef.current = (data.type === "PA_CONTEXT" && data.prompt) ? data.prompt : null;
+      pageAgentPromptRef.current =
+        data.type === "PA_CONTEXT" && data.prompt ? data.prompt : null;
       if (data.type === "PA_INSERT_PROMPT" || data.autoInsert) {
         setPageAgentInjectedText({ id: generateUUID(), text: prompt });
       }
