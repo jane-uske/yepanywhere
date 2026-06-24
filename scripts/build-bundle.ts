@@ -292,7 +292,8 @@ step("Generate package.json for npm", () => {
       node: ">=20",
     },
     publishConfig: {
-      registry: "https://registry.anpm.alibaba-inc.com",
+      registry: "https://registry.npmjs.org",
+      access: "public",
     },
   };
 
